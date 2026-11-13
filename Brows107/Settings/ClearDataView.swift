@@ -54,7 +54,7 @@ struct ClearDataView: View {
                     .padding(.top, 6)
 
                 Button {
-                    confirm = true
+                    self.confirm = true
                 } label: {
                     Text(busy ? "Clearing…" : "Clear")
                         .font(.ui(17, weight: .semibold))
@@ -69,7 +69,7 @@ struct ClearDataView: View {
                 .padding(.top, 26)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 12)
+            .padding(.top, 12) 
 
             Spacer(minLength: 0)
         }
@@ -108,16 +108,18 @@ struct ClearDataView: View {
         }
     }
 
+
     // row divider
     private var rowDivider: some View {
         Rectangle().fill(separator).frame(height: 1).padding(.leading, 16)
     }
-}
+}  
+
 
 // MARK: - Helpers
 extension ClearDataView {
     // Clears toggle
-    private func clearToggle(_ headingText: String, isOn: Binding<Bool>) -> some View {
+    private func clearToggle(_ headingText: String, isOn: Binding<Bool>) -> some View {  
         Toggle(isOn: isOn) {
             Text(headingText)
                 .font(.ui(17))
@@ -128,6 +130,7 @@ extension ClearDataView {
         .frame(height: 54)
     }
 
+
     // Runs the selected wipes and shows the toast.
     private func performClear() {
         let wipeHistory = clearHistory
@@ -137,7 +140,7 @@ extension ClearDataView {
         busy = true
         Task {
             if wipeHistory {
-                vault.visitLedger.removeAll()
+                self.vault.visitLedger.removeAll()
                 vault.flushSnapshot()
             }
             if wipeHistory || wipeAI {
@@ -162,13 +165,17 @@ extension ClearDataView {
             if !types.isEmpty {
                 await WKWebsiteDataStore.default().removeData(ofTypes: types, modifiedSince: .distantPast)
             }
-            clearHistory = false
+            self.clearHistory = false
             cookies = false
             cache = false
             aiAnswers = false
             busy = false
             showToast = true
-            try? await Task.sleep(for: .seconds(2.2))
+            do {
+                try await Task.sleep(for: .seconds(2.2))
+            } catch {
+                logSwallowed(error)
+            }
             showToast = false
         }
     }

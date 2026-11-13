@@ -3,28 +3,35 @@
 //  Brows107
 //
 //  Created by Aleksandra Savchuk on 25/10/26.
-//
+// 
 
 import Foundation
 import Network
+import os
 
 /// Shared reachability for page loads and AI flows.
-@MainActor
-final class LinkPulse {
+final class LinkPulse: Sendable {
     static let singleton = LinkPulse()
 
-    private(set) var linkSatisfied = true
+    // The path callback fires on a background queue, so the flag sits behind a lock
+    // instead of being hopped over to the main actor.
+    private let satisfiedFlag = OSAllocatedUnfairLock(initialState: true)
     private let pathProbe = NWPathMonitor()
 
-    private init() {
-        pathProbe.pathUpdateHandler = { path in
-            let pathLive = path.status == .satisfied
-            Task { @MainActor in
-                LinkPulse.singleton.linkSatisfied = pathLive
-            }
-        }
-        pathProbe.start(queue: DispatchQueue(label: "com.brows107.link-pulse"))
-    }
+    var linkSatisfied: Bool { satisfiedFlag.withLock { $0 } }
 
+
+    private init() {
+        let flag = satisfiedFlag
+        self.pathProbe.pathUpdateHandler = { path in
+            let pathLive = path.status == .satisfied
+            flag.withLock { $0 = pathLive }
+        }
+        self.pathProbe.start(queue: DispatchQueue(label: "com.brows107.link-pulse"))
+    }
+}    
+
+extension LinkPulse {
+    // reads nicer at call sites than !linkSatisfied
     var linkSevered: Bool { !linkSatisfied }
 }

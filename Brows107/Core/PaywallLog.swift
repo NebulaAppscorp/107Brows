@@ -10,6 +10,7 @@ import os
 
 /// Small os.Logger wrapper so paywall problems show up in Console.
 enum PaywallLog {
+    // keeps log
     private static let log = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? AppMetadata.shippingBundleID,
         category: "Paywall"
@@ -18,7 +19,7 @@ enum PaywallLog {
     enum Level {
         case info, warning, failure
 
-        var tag: String {
+        var tag: String { 
             switch self {
             case .info: return ""
             case .warning: return "WARN "
@@ -27,7 +28,7 @@ enum PaywallLog {
         }
     }
 
-    // One entry point for every paywall log line; the level only changes the os.Logger call and the debug prefix.
+    // One entry point for every paywall log line; the level only changes the os.Logger call and the debug prefix. 
     static func emit(_ level: Level, _ message: String) {
         switch level {
         case .info: log.info("\(message, privacy: .public)")
@@ -67,7 +68,7 @@ enum PaywallLog {
         emit(.warning, "placement \(requested) unavailable; available=[\(available.joined(separator: ", "))]")
     }
 
-    // keeps kit loaded
+    // keeps kit loaded    
     static func storeKitLoaded(source: String, offers: [(id: String, price: String)]) {
         if offers.isEmpty {
             emit(.warning, "storekit source=\(source) offers=0")
@@ -90,4 +91,12 @@ enum PaywallLog {
     static func restoreOutcome(active: Bool, detail: String) {
         emit(.info, "restore active=\(active) \(detail)")
     }
+}
+
+
+/// Sleeps get interrupted when a task is cancelled; nothing to recover, just leave a trace in debug builds.
+func logSwallowed(_ error: Error, file: StaticString = #fileID) {
+    #if DEBUG
+        print("[107] swallowed in \(file): \(error)")
+    #endif
 }

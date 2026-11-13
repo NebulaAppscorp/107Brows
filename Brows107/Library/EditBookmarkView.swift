@@ -41,7 +41,7 @@ struct EditBookmarkView: View {
                     labeledField("Address", text: $bookmarkDraft, addressStyle: true)
                     rowDivider
                     Button {
-                        showFolderPicker = true
+                        self.showFolderPicker = true
                     } label: {
                         HStack(spacing: 12) {
                             Text("Folder")
@@ -79,7 +79,7 @@ struct EditBookmarkView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Palette.canvasView.ignoresSafeArea())
             .navigationTitle("Edit bookmark")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline) 
             .browsLiquidNavBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismissSheet() } }
@@ -100,11 +100,11 @@ struct EditBookmarkView: View {
                     dismissSheet()
                 }
                 Button("Cancel", role: .cancel) {}
-            } message: {
+            } message: {  
                 Text("This can’t be undone.")
             }
             .onAppear {
-                headingText = bookmarkEntry.pageTitle
+                self.headingText = bookmarkEntry.pageTitle
                 bookmarkDraft = EditBookmarkView.displayAddress(for: bookmarkEntry.pageURL)
                 shelfDraft = bookmarkEntry.shelfLabel ?? ""
             }
@@ -165,7 +165,7 @@ extension EditBookmarkView {
 
 /// Folder chooser inside the edit sheet.
 struct BookmarkFolderPicker: View {
-    // from the environment
+    // from the environment 
     @Binding var selection: String
     let folderChoices: [String]
     @Environment(\.dismiss) private var dismissSheet
@@ -195,7 +195,7 @@ struct BookmarkFolderPicker: View {
                             HStack {
                                 Text(name)
                                 Spacer()
-                                if selection == name {
+                                if selection == name { 
                                     Image(systemName: "checkmark").foregroundStyle(Palette.brandInk)
                                 }
                             }
@@ -209,7 +209,7 @@ struct BookmarkFolderPicker: View {
                         Button("Add") {
                             let trimmed = newFolder.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !trimmed.isEmpty else { return }
-                            selection = trimmed
+                            self.selection = trimmed
                             dismissSheet()
                         }
                         .disabled(newFolder.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

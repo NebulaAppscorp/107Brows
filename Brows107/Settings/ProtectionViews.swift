@@ -2,7 +2,7 @@
 //  ProtectionViews.swift
 //  Brows107
 //
-//  Created by Aleksandra Savchuk on 05/11/26.
+//  Created by Aleksandra Savchuk on 05/11/26.  
 //
 
 import SwiftUI
@@ -82,7 +82,7 @@ struct ProtectionView: View {
                     uiColor: UIColor {
                         $0.userInterfaceStyle == .dark
                             ? .systemGroupedBackground : UIColor(red: 242 / 255, green: 245 / 255, blue: 243 / 255, alpha: 1)
-                    }
+                    } 
                 ).ignoresSafeArea()
             )
             .navigationTitle("Protection")
@@ -104,6 +104,7 @@ struct ProtectionView: View {
         .onChange(of: vault.shieldTrackers) { _, _ in vault.writeShieldPrefs() }
         .onChange(of: vault.shieldRedirects) { _, _ in vault.writeShieldPrefs() }
     }
+
 
     // divider
     private var divider: some View {
@@ -188,6 +189,7 @@ extension ProtectionView {
         return formatter.string(from: NSNumber(value: slot)) ?? "\(slot)"
     }
 
+
     // protection toggle
     private func protectionToggle(_ headingText: String, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) { Text(headingText).font(.ui(17)).browsExactLineHeight(22) }
@@ -212,14 +214,14 @@ struct ExceptionsView: View {
                         {
                             vault.shieldExceptions.append(domain)
                             vault.writeShieldPrefs()
-                            exceptionDraft = ""
+                            self.exceptionDraft = ""
                         }
                     }.disabled(exceptionDraft.isEmpty)
                 }
             }
             Section("Protection is off for these sites") {
                 ForEach(vault.shieldExceptions, id: \.self) { Text($0) }.onDelete {
-                    vault.shieldExceptions.remove(atOffsets: $0)
+                    vault.shieldExceptions.remove(atOffsets: $0) 
                     vault.writeShieldPrefs()
                 }
             }
@@ -229,6 +231,7 @@ struct ExceptionsView: View {
 
 /// Popover with the current site protection status.
 struct SitePanelView: View {
+    // keeps web lane
     let webLane: WebSession
     @Environment(BrowserStore.self) private var vault
     @Environment(\.dismiss) private var dismissSheet
@@ -260,10 +263,10 @@ struct SitePanelView: View {
                             vault.shieldExceptions.removeAll { $0 == host }
                         } else if !vault.shieldExceptions.contains(host) {
                             vault.shieldExceptions.append(host)
-                        }
+                        }  
                         vault.writeShieldPrefs()
-                        webLane.refreshShieldScripts()
-                        webLane.liveWebView?.reload()
+                        self.webLane.refreshShieldScripts()
+                        self.webLane.liveWebView?.reload()
                     })
             )
             .padding(.horizontal, 16).frame(height: 50)

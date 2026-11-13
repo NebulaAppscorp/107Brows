@@ -17,6 +17,7 @@ enum AppMetadata {
         Bundle.main.object(forInfoDictionaryKey: key) as? String
     }
 
+    // marketing title
     static var marketingTitle: String {
         infoPlistString("CFBundleDisplayName") ?? "107Brows"
     }
@@ -35,12 +36,12 @@ enum AppMetadata {
             reviewQueryParts.append(URLQueryItem(name: "action", value: "write-review"))
             storeReviewParts?.queryItems = reviewQueryParts
             if let reviewURL = storeReviewParts?.url { return reviewURL }
-        }
+        }    
         if let appleAppID = infoPlistString("AppleAppID")?.trimmingCharacters(in: .whitespacesAndNewlines), !appleAppID.isEmpty {
             return URL(string: "https://apps.apple.com/app/id\(appleAppID)?action=write-review")
         }
         return appStoreListingURL
-    }
+    } 
 
     static var versionCaption: String {
         let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -53,10 +54,12 @@ enum AppMetadata {
         return plistBundleID.isEmpty ? shippingBundleID : plistBundleID
     }
 
+    // keeps apphud public key
     static var apphudPublicKey: String? {
         infoPlistString("ApphudAPIKey")
     }
 
+    // keeps nebula base url
     static var nebulaBaseURL: URL {
         if let slot = infoPlistString("NebulaBaseURL"), let linkURL = URL(string: slot) {
             return linkURL
@@ -69,7 +72,8 @@ enum AppMetadata {
             ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJzaGFyb3ZfMTk5OUBsaXN0LnJ1Iiwicm9sZSI6IkFETUlOIiwiZXhwIjo0OTM1MjA4NjcxLCJpYXQiOjE3ODE2MDg2NzEsInR5cGUiOiJhY2Nlc3MifQ.0GRnZq1LZA__0G0tYEsPER8lQiCiX_myE6_T_nMwUmc"
     }
 
-    static var apphudPaywallPlacementID: String {
+    // apphud paywall placement id
+    static var apphudPaywallPlacementID: String { 
         infoPlistString("ApphudPaywallPlacementID") ?? "main"
     }
 
@@ -103,6 +107,7 @@ enum AppMetadata {
     static var appStoreListingURL: URL? {
         infoPlistString("AppStoreURL").flatMap(URL.init(string:))
     }
+
 
     // apphud user id
     static func apphudUserID() -> String {
@@ -147,6 +152,7 @@ struct LegalSheet: Identifiable, Equatable {
 }
 
 struct LegalWebSheet: View {
+    // sheet heading
     let sheetHeading: String
     let policyURL: URL
     @Environment(\.dismiss) private var dismissSheet
@@ -176,7 +182,7 @@ private struct LegalWebView: UIViewRepresentable {
         let hostName = WKWebView(frame: .zero, configuration: webKitConfig)
         hostName.isOpaque = false
         let embedTarget = Self.legalEmbedURL(for: policyURL)
-        var policyRequest = URLRequest(url: embedTarget)
+        var policyRequest = URLRequest(url: embedTarget)  
         policyRequest.cachePolicy = .reloadIgnoringLocalCacheData
         hostName.load(policyRequest)
         return hostName
@@ -186,6 +192,7 @@ private struct LegalWebView: UIViewRepresentable {
         _ = uiView
         _ = context
     }
+
 
     // legal embed url
     static func legalEmbedURL(for linkURL: URL) -> URL {

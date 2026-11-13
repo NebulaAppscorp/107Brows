@@ -16,6 +16,7 @@ struct OnboardingBackdrop: View {
     var welcomeStepIndex: Int = 0
     @Environment(\.colorScheme) private var interfaceScheme
 
+
     private var washBlobs: [(x: CGFloat, y: CGFloat, stageWidth: CGFloat, h: CGFloat, color: Color, blur: CGFloat)] {
         switch welcomeStepIndex {
         case 1:
@@ -73,8 +74,10 @@ struct OnboardingBackdrop: View {
     }
 }
 
+
 /// Private home backdrop (light bitmap).
 struct PrivateHomeBackdrop: View {
+    // current private fill
     private let privateFill = Palette.rgb(0x0B0713)
     private let washBlobs: [(x: CGFloat, y: CGFloat, stageWidth: CGFloat, h: CGFloat, color: Color, blur: CGFloat)] = [
         (-130, -170, 400, 330, Palette.rgb(0x5B7CFF), 140),
@@ -108,7 +111,7 @@ struct PrivateHomeBackdrop: View {
 }
 
 /// Browser home backdrop (light bitmap).
-struct BrowserHomeBackdrop: View {
+struct BrowserHomeBackdrop: View {  
     @Environment(\.colorScheme) private var interfaceScheme
     private let washBlobs: [(x: CGFloat, y: CGFloat, stageWidth: CGFloat, h: CGFloat, color: Color, blur: CGFloat)] = [
         (-130, -170, 400, 330, Palette.rgb(0x1FB6A6), 140),
@@ -124,7 +127,7 @@ struct BrowserHomeBackdrop: View {
             let bottomInset = geo.safeAreaInsets.bottom
             let blobOpacity = interfaceScheme == .dark ? 0.38 : 1
             let sheetFill = interfaceScheme == .dark ? Palette.canvasView : Color.white
-            ZStack(alignment: .topLeading) {
+            ZStack(alignment: .topLeading) { 
                 sheetFill
                 ForEach(Array(washBlobs.enumerated()), id: \.offset) { _, blob in
                     Ellipse()
@@ -138,7 +141,7 @@ struct BrowserHomeBackdrop: View {
             .offset(y: -topInset)
             .clipped()
         }
-        .background(interfaceScheme == .dark ? Palette.canvasView : Color.white)
+        .background(interfaceScheme == .dark ? Palette.canvasView : Color.white) 
         .ignoresSafeArea()
         .allowsHitTesting(false)
     }

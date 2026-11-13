@@ -14,6 +14,7 @@ struct FindOnPageBar: View {
     @Binding var draftText: String
     var matchIndex: Int
     var matchCount: Int
+    // work out the auto focus
     var autoFocus = false
     var onQueryChange: (String) -> Void
     var onSubmit: () -> Void
@@ -37,13 +38,17 @@ struct FindOnPageBar: View {
                         .foregroundStyle(Palette.mutedLabel)
                 }
             }
+            // spacing from the design
             .padding(.horizontal, 14)
+            // Fixed size from the design
             .frame(maxWidth: .infinity)
+            // size matches the mock
             .frame(height: 44)
             .background(Palette.raisedFill, in: Capsule())
-            .browsGlassCapsule()
+            .browsGlassCapsule()  
 
             HStack(spacing: 0) {
+                // Tap handler below
                 Button {
                     onPrev()
                 } label: {
@@ -61,7 +66,8 @@ struct FindOnPageBar: View {
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.ui(16, weight: .semibold))
-                        .foregroundStyle(Color.primary)
+                        .foregroundStyle(Color.primary) 
+                        // size matches the mock
                         .frame(width: 36, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -74,21 +80,25 @@ struct FindOnPageBar: View {
             .browsGlassCapsule()
 
             Button {
-                onDone()
+                onDone() 
             } label: {
                 Image(systemName: "checkmark")
                     .font(.ui(17, weight: .semibold))
                     .foregroundStyle(.white)
+                    // Fixed size from the design
                     .frame(width: 44, height: 44)
-                    .contentShape(Circle())
+                    .contentShape(Circle()) 
             }
             .buttonStyle(.plain)
             // background goes behind everything
             .background(Palette.brandInk, in: Circle())
             .browsGlassCircle()
+            // size matches the mock
             .frame(width: 44, height: 44)
         }
+        // spacing from the design
         .padding(.horizontal, 16)
+        // Spacing from the design
         .padding(.vertical, 8)
         .frame(height: 60)
         .frame(maxWidth: .infinity)
@@ -104,6 +114,7 @@ struct FindTextInput: UIViewRepresentable {
     var autoFocus: Bool
     var onSubmit: () -> Void
 
+
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
@@ -111,7 +122,7 @@ struct FindTextInput: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextField {
         let field = LockedFindTextField()
         field.delegate = context.coordinator
-        field.font = .systemFont(ofSize: 17)
+        field.font = .systemFont(ofSize: 17)  
         field.textColor = .label
         field.tintColor = UIColor(Palette.brandInk)
         field.placeholder = "Find"
@@ -150,7 +161,6 @@ struct FindTextInput: UIViewRepresentable {
         field.resignFirstResponder()
     }
 
-    @MainActor
     final class Coordinator: NSObject, UITextFieldDelegate {
         var parent: FindTextInput
         var focusRequestScheduled = false
@@ -178,4 +188,4 @@ final class LockedFindTextField: UITextField {
         if preventResignWhileFinding { return false }
         return super.resignFirstResponder()
     }
-}
+} 

@@ -14,32 +14,40 @@ import AVFoundation
 /// Nonisolated audio/speech helpers so Swift 6 never injects `@MainActor` queue assertions into CoreAudio/Speech background callbacks.
 enum VoiceDictationRuntime {
     // Request speech authorization
-    nonisolated static func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
+    nonisolated static func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {  
+        // local current
         let current = SFSpeechRecognizer.authorizationStatus()
-        if current != .notDetermined { return current }
+        if current != .notDetermined { return current } 
         return await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status)
             }
-        }
+        } 
     }
 
     // request microphone permission
     nonisolated static func requestMicrophonePermission() async -> Bool {
         switch AVAudioApplication.shared.recordPermission {
+        // When granted
         case .granted:
             return true
+        // denied case
         case .denied:
             return false
+        // when undetermined
         case .undetermined:
             return await AVAudioApplication.requestRecordPermission()
         @unknown default:
             return false
         }
     }
+}
 
+// MARK: - VoiceDictationRuntime helpers
+extension VoiceDictationRuntime {
     // activate audio session
     nonisolated static func activateAudioSession() async -> Bool {
+        // wait for it before moving on
         await Task.detached(priority: .userInitiated) {
             let session = AVAudioSession.sharedInstance()
             do {
@@ -67,8 +75,9 @@ enum VoiceDictationRuntime {
     ) {
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak request] buffer, _ in
             request?.append(buffer)
-        }
+        }  
     }
+
 
     // Starts recognition task
     nonisolated static func startRecognitionTask(
@@ -78,6 +87,7 @@ enum VoiceDictationRuntime {
     ) -> SFSpeechRecognitionTask {
         recognizer.recognitionTask(with: request) { result, error in
             let transcript = result?.bestTranscription.formattedString
+            // local is final
             let isFinal = result?.isFinal ?? false
             let speechFaulted = error != nil
             onEvent(transcript, isFinal, speechFaulted)
@@ -85,9 +95,10 @@ enum VoiceDictationRuntime {
     }
 }
 
-/// Turns speech into text for a search field. One session at a time, so a second mic stops the first.
+/// Turns speech into text for a search field. One session at a time, so a second mic stops the first. 
 @MainActor
 final class VoiceDictation: ObservableObject {
+    // current shared
     static let shared = VoiceDictation()
     @Published private(set) var listening = false
     @Published private(set) var activeID: UUID?
@@ -97,6 +108,7 @@ final class VoiceDictation: ObservableObject {
     private var dictationSeed = ""
     private var update: ((String) -> Void)?
     private var sessionToken = UUID()
+    // begin task
     private var beginTask: Task<Void, Never>?
     private var hasTap = false
 
@@ -106,13 +118,14 @@ final class VoiceDictation: ObservableObject {
         text draftText: String,
         onError: ((String) -> Void)? = nil,
         update: @escaping (String) -> Void
-    ) {
+    ) { 
         if listening, activeID == id {
             stop()
             return
         }
         beginTask?.cancel()
-        beginTask = Task { @MainActor in
+        beginTask = Task {
+            // wait for it before moving on
             await begin(id: id, text: draftText, onError: onError, update: update)
         }
     }
@@ -125,15 +138,16 @@ final class VoiceDictation: ObservableObject {
         update: @escaping (String) -> Void
     ) async {
         let recognizer = SFSpeechRecognizer(locale: Locale.current) ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-        guard let recognizer, recognizer.isAvailable else {
+        guard let recognizer, recognizer.isAvailable else { 
             onError?("Voice input isn’t available on this device right now.")
             return
         }
         guard !Task.isCancelled else { return }
 
         let speechStatus = await VoiceDictationRuntime.requestSpeechAuthorization()
+        // skip when the input is unusable
         guard !Task.isCancelled else { return }
-        guard speechStatus == .authorized else {
+        guard speechStatus == .authorized else {  
             onError?("Allow Speech Recognition in Settings to use voice search.")
             return
         }
@@ -148,6 +162,7 @@ final class VoiceDictation: ObservableObject {
         await start(id: id, text: draftText, recognizer: recognizer, onError: onError, update: update)
         beginTask = nil
     }
+
 
     // Starts it
     private func start(
@@ -205,10 +220,12 @@ final class VoiceDictation: ObservableObject {
             return
         }
 
-        task = VoiceDictationRuntime.startRecognitionTask(recognizer: recognizer, request: request) {
+        task = VoiceDictationRuntime.startRecognitionTask(recognizer: recognizer, request: request) {  
             [weak self] spoken, isFinal, speechFaulted in
             Task { @MainActor [weak self] in
+                // self must exist here
                 guard let self, self.sessionToken == token else { return }
+                // Optional spoken, may be missing
                 if let spoken {
                     let spacer = self.dictationSeed.isEmpty || self.dictationSeed.hasSuffix(" ") ? "" : " "
                     self.update?(self.dictationSeed + spacer + spoken)
@@ -225,15 +242,16 @@ final class VoiceDictation: ObservableObject {
         sessionToken = UUID()
 
         task?.cancel()
-        task = nil
+        self.task = nil
         request?.endAudio()
         request = nil
 
+        // handle engine if it is there
         if let engine {
             if engine.isRunning { engine.stop() }
             if hasTap {
                 engine.inputNode.removeTap(onBus: 0)
-                hasTap = false
+                self.hasTap = false
             }
             engine.reset()
         }
@@ -244,7 +262,7 @@ final class VoiceDictation: ObservableObject {
     // stops it
     func stop() {
         beginTask?.cancel()
-        beginTask = nil
+        self.beginTask = nil
         tearDownRecording()
         update = nil
         listening = false

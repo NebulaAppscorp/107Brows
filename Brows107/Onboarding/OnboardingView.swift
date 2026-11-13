@@ -1,4 +1,4 @@
-//
+//  
 //  OnboardingView.swift
 //  Brows107
 //
@@ -40,6 +40,7 @@ struct OnboardingPage {
 
 /// Six-step welcome flow before the paywall.
 struct OnboardingView: View {
+    // complete onboarding
     let completeOnboarding: () -> Void
     @State private var welcomeStepIndex = 0
     @State private var attCoordinator = ATTConsent()
@@ -55,7 +56,8 @@ struct OnboardingView: View {
     }
     private var footerOrigin: CGFloat { 715 }
     private var illustrationTopGap: CGFloat {
-        switch welcomeStepIndex {
+        // map the state to what we show
+        switch welcomeStepIndex {    
         case 2, 3: return 69
         case 1: return 29
         default: return 20
@@ -66,11 +68,13 @@ struct OnboardingView: View {
         GeometryReader { geo in
             let layoutScale = geo.size.width / 402
             let stageSideInset: CGFloat = geo.size.width > 600 ? (geo.size.width - 440) / 2 : 20 * layoutScale
+            // Work out the stage inner width
             let stageInnerWidth = geo.size.width - stageSideInset * 2
             ZStack(alignment: .topLeading) {
                 TopGlowBackdrop(assetName: AssetCatalog.topGlow)
                 BrandMark(assetName: welcomeStep.heroAsset)
-                    .frame(width: 56 * layoutScale, height: 56 * layoutScale)
+                    // size matches the mock
+                    .frame(width: 56 * layoutScale, height: 56 * layoutScale)    
                     .position(x: stageSideInset + 28 * layoutScale, y: (stageTopInset + 28) * layoutScale)
                     .accessibilityIdentifier("onboarding.mark")
 
@@ -85,6 +89,7 @@ struct OnboardingView: View {
 
                 footer(width: stageInnerWidth, layoutScale: layoutScale, footerSize: geo.size)
             }
+            // Size matches the mock
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
             .contentShape(Rectangle())
@@ -112,6 +117,7 @@ extension OnboardingView {
         (footerOrigin - stageTopInset - 8) * layoutScale
     }
 
+
     // Page body
     @ViewBuilder private func pageBody(width: CGFloat, layoutScale: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -131,10 +137,12 @@ extension OnboardingView {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10 * layoutScale)
 
+            // optional illustration, may be missing
             if let illustration = welcomeStep.illustration {
                 Spacer().frame(height: illustrationTopGap * layoutScale)
                 BundledImage(assetName: illustration)
-                    .frame(width: width, height: 372 * layoutScale, alignment: .top)
+                    // Size matches the mock
+                    .frame(width: width, height: 372 * layoutScale, alignment: .top) 
             } else if welcomeStepIndex == 0 {
                 VStack(alignment: .leading, spacing: 18 * layoutScale) {
                     feature(
@@ -156,6 +164,7 @@ extension OnboardingView {
             }
             Spacer(minLength: 0)
         }
+        // Size matches the mock
         .frame(width: width, height: pageBodyHeight(layoutScale: layoutScale), alignment: .topLeading)
     }
 
@@ -172,20 +181,23 @@ extension OnboardingView {
                             .font(.ui(12 * layoutScale, weight: .semibold))
                             .foregroundStyle(.white)
                     }
+                    // fixed size from the design
                     .frame(width: 26 * layoutScale, height: 26 * layoutScale)
                     Text(headingText).font(.ui(17 * layoutScale)).foregroundStyle(.primary)
                     Spacer(minLength: 0)
                 }
-                .padding(.leading, 12 * layoutScale)
+                .padding(.leading, 12 * layoutScale)  
                 .frame(height: stepRowHeight, alignment: .center)
                 if index < stepTitles.count - 1 {
                     Rectangle()
                         .fill(Color(uiColor: .separator).opacity(0.45))
                         .frame(height: 1)
+                        // spacing from the design
                         .padding(.leading, (12 + 26 + 12) * layoutScale)
                 }
             }
         }
+        // Size matches the mock
         .frame(width: width, alignment: .leading)
     }
 
@@ -205,15 +217,17 @@ extension OnboardingView {
                     icon: "note_private", text: "Pages opened in private are never processed.", layoutScale: layoutScale,
                     color: mutedLabelColor)
             }
+            // Spacing from the design
             .padding(.horizontal, 0)
             Button("Read our Privacy Policy") {
-                vault.openLegal(.privacy)
+                self.vault.openLegal(.privacy)
             }
             .font(.ui(15 * layoutScale, weight: .semibold))
             .foregroundStyle(Palette.brandInk)
             .padding(.top, 36 * layoutScale)
             Spacer(minLength: 0)
         }
+        // Size matches the mock
         .frame(width: width, alignment: .topLeading)
     }
 
@@ -239,10 +253,10 @@ extension OnboardingView {
     }
 
     // disclosure
-    private func disclosure(icon: String, text draftText: String, layoutScale: CGFloat, color: Color) -> some View {
+    private func disclosure(icon: String, text draftText: String, layoutScale: CGFloat, color: Color) -> some View {  
         HStack(alignment: .top, spacing: 12 * layoutScale) {
             BundledImage(assetName: icon)
-                .frame(width: 22 * layoutScale, height: 22 * layoutScale)
+                .frame(width: 22 * layoutScale, height: 22 * layoutScale)    
             Text(draftText)
                 .font(.ui(15 * layoutScale))
                 .tracking(-0.23)
@@ -250,6 +264,7 @@ extension OnboardingView {
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
+
 
     // footer
     private func footer(width: CGFloat, layoutScale: CGFloat, footerSize: CGSize) -> some View {
@@ -263,6 +278,7 @@ extension OnboardingView {
                         .frame(width: index == welcomeStepIndex ? 20 * layoutScale : 7 * layoutScale, height: 7 * layoutScale)
                 }
             }
+            // Size matches the mock
             .frame(height: 7 * layoutScale)
             .position(x: footerSize.width / 2, y: dotsY + 3.5 * layoutScale)
             .accessibilityLabel("Step \(welcomeStepIndex + 1) of 6")
@@ -272,14 +288,16 @@ extension OnboardingView {
                 enabled: (welcomeStepIndex > 0 || attCoordinator.attSettled) && !moving
             ) {
                 if welcomeStepIndex == 4 {
+                    // handle link url if it is there
                     if let linkURL = URL(string: BrowsSystemSettings.defaultBrowserOrAppSettings) {
                         UIApplication.shared.open(linkURL)
                     }
                 } else {
                     advance()
                 }
-            }
-            .frame(width: width)
+            }  
+            // fixed size from the design
+            .frame(width: width) 
             .position(x: footerSize.width / 2, y: buttonY)
             .accessibilityIdentifier("onboarding.continue")
 
@@ -287,12 +305,14 @@ extension OnboardingView {
                 Button("Not now", action: advance)
                     .font(.ui(17 * layoutScale, weight: .semibold))
                     .foregroundStyle(Color(uiColor: .secondaryLabel))
+                    // Fixed size from the design
                     .frame(width: width, height: 22 * layoutScale)
                     .position(x: footerSize.width / 2, y: notNowY)
                     .accessibilityIdentifier("onboarding.skipDefault")
             }
         }
     }
+
 
     // Next step, or finish after the last one.
     private func advance() {
@@ -301,12 +321,19 @@ extension OnboardingView {
             UserDefaults.standard.set(true, forKey: "aiDisclosureAccepted")
             completeOnboarding()
         } else {
-            moving = true
+            self.moving = true
+            // same easing as the rest of the sheet
             withAnimation(lowMotion ? .easeInOut(duration: 0.15) : .smooth(duration: 0.36)) { welcomeStepIndex += 1 }
+            // fire and forget, cancelled with the owner
             Task {
-                try? await Task.sleep(for: .milliseconds(380))
-                moving = false
+                do {
+                    // Suspends here
+                    try await Task.sleep(for: .milliseconds(380))
+                } catch {
+                    logSwallowed(error)
+                }
+                self.moving = false
             }
         }
     }
-}
+} 

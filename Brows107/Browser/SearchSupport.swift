@@ -1,5 +1,5 @@
 //
-//  SearchSupport.swift
+//  SearchSupport.swift 
 //  Brows107
 //
 //  Created by Aleksandra Savchuk on 04/10/26.
@@ -9,7 +9,7 @@ import SwiftUI
 import UIKit
 
 
-struct SearchSuggestionRow: Identifiable, Equatable, Sendable {
+struct SearchSuggestionRow: Identifiable, Equatable, Sendable { 
     let head: String
     let tail: String
     var id: String { head + tail }
@@ -28,6 +28,7 @@ struct SearchSuggestionRow: Identifiable, Equatable, Sendable {
 }
 
 struct IndexedSavedPage: Identifiable, Equatable {
+    // id
     let id: UUID
     let headingText: String
     let urlString: String
@@ -35,13 +36,15 @@ struct IndexedSavedPage: Identifiable, Equatable {
     let lowercasedTitle: String
     let lowercasedURL: String
 
+
     @MainActor
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
+    private static let relativeFormatter: RelativeDateTimeFormatter = { 
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         formatter.dateTimeStyle = .numeric
         return formatter
     }()
+
 
     @MainActor
     init(page: SavedPage) {
@@ -60,6 +63,7 @@ struct IndexedSavedPage: Identifiable, Equatable {
 actor GoogleSuggestions {
     static let shared = GoogleSuggestions()
 
+
     private let session: URLSession
     private var cache: [String: [SearchSuggestionRow]] = [:]
 
@@ -74,18 +78,20 @@ actor GoogleSuggestions {
 
     // Cached it
     func cached(for query: String) -> [SearchSuggestionRow]? {
-        cache[query.lowercased()]
+        self.cache[query.lowercased()]
     }
 
     // fetches it
     func fetch(_ query: String) async -> [SearchSuggestionRow] {
         let key = query.lowercased()
+        // Only when there is a existing
         if let existing = cache[key] { return existing }
         var suggestQuery = URLComponents(string: "https://suggestqueries.google.com/complete/search")
         suggestQuery?.queryItems = [
             URLQueryItem(name: "client", value: "firefox"),
             URLQueryItem(name: "q", value: query),
         ]
+        // Need link url to go on
         guard let linkURL = suggestQuery?.url else { return [] }
         var request = URLRequest(url: linkURL)
         request.timeoutInterval = 3
@@ -99,20 +105,20 @@ actor GoogleSuggestions {
         else { return [] }
         let rowBatch = suggestions.compactMap { suggestion -> SearchSuggestionRow? in
             let trimmed = suggestion.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, trimmed.compare(query, options: .caseInsensitive) != .orderedSame else { return nil }
+            guard !trimmed.isEmpty, trimmed.compare(query, options: .caseInsensitive) != .orderedSame else { return nil }    
             if trimmed.lowercased().hasPrefix(key) {
                 return SearchSuggestionRow(
                     head: String(trimmed.prefix(query.count)),
                     tail: String(trimmed.dropFirst(query.count))
                 )
-            }
+            }  
             return SearchSuggestionRow(head: trimmed, tail: "")
         }
         .prefix(8)
         .map { $0 }
 
         if cache.count >= 64 { cache.removeAll() }
-        cache[key] = rowBatch
+        self.cache[key] = rowBatch
         return rowBatch
     }
 }

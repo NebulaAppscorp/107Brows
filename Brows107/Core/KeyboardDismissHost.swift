@@ -1,7 +1,7 @@
 //
 //  KeyboardDismissHost.swift
 //  Brows107
-//
+// 
 //  Created by Aleksandra Savchuk on 07/11/26.
 //
 
@@ -10,6 +10,7 @@ import UIKit
 
 /// Tap anywhere outside a field to dismiss the keyboard without eating the tap.
 struct KeyboardDismissHost: UIViewRepresentable {
+    // dismiss gestures on
     var dismissGesturesOn = true
 
     func makeCoordinator() -> KeyboardTapRelay { KeyboardTapRelay() }
@@ -42,12 +43,13 @@ struct KeyboardDismissHost: UIViewRepresentable {
         // keeps keyboard host in sync
         func syncKeyboardHost(dismissGesturesOn: Bool, anchorView hostName: UIView) {
             self.dismissGesturesOn = dismissGesturesOn
-            if self.anchorView === hostName, tapDismissRecognizer != nil {
+            if self.anchorView === hostName, tapDismissRecognizer != nil {  
                 tapDismissRecognizer?.isEnabled = dismissGesturesOn
                 return
             }
             wireToWindow(from: hostName)
         }
+
 
         // Gesture goes on the window, not the view, so scroll views keep working.
         func wireToWindow(from hostName: UIView) {
@@ -56,7 +58,7 @@ struct KeyboardDismissHost: UIViewRepresentable {
             DispatchQueue.main.async { [weak self, weak hostName] in
                 guard let self, let hostName else { return }
                 let hostWindow = hostName.window
-                if hostWindow == nil { return }
+                if hostWindow == nil { return } 
                 if self.dismissHostWindow === hostWindow {
                     self.tapDismissRecognizer?.isEnabled = self.dismissGesturesOn
                     return
@@ -80,6 +82,7 @@ struct KeyboardDismissHost: UIViewRepresentable {
             tapDismissRecognizer = nil
             dismissHostWindow = nil
         }
+
 
         // end editing on tap
         @objc private func endEditingOnTap() {

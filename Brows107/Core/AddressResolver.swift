@@ -1,5 +1,5 @@
 //
-//  AddressResolver.swift
+//  AddressResolver.swift  
 //  Brows107
 //
 //  Created by Aleksandra Savchuk on 31/10/26.
@@ -25,5 +25,5 @@ enum AddressResolver {
             string: engine == "DuckDuckGo" ? "https://duckduckgo.com/" : "https://www.google.com/search")
         queryParts?.queryItems = [URLQueryItem(name: "q", value: addressDraft)]
         return queryParts?.url
-    }
+    }    
 }

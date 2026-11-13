@@ -1,7 +1,7 @@
 //
 //  WebSession.swift
 //  Brows107
-//
+//  
 //  Created by Aleksandra Savchuk on 29/10/26.
 //
 
@@ -92,6 +92,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         refreshNavigationState(from: hostName)
     }
 
+
     // refreshes navigation state
     private func refreshNavigationState(from hostName: WKWebView) {
         guard hostName == liveWebView else { return }
@@ -103,7 +104,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
     private func applyURLToWebView(_ linkURL: URL, in hostName: WKWebView) {
         guard vaultRef?.launchScenario.flatMap(PageLoadError.sampleFailure) == nil else { return }
         if LinkPulse.singleton.linkSevered, !linkURL.isFileURL {
-            navPending = false
+            self.navPending = false
             pageError = .offline
             return
         }
@@ -121,20 +122,20 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
             pageSurfaces[id]?.stopLoading()
             pageSurfaces[id]?.navigationDelegate = nil
             pageSurfaces[id]?.uiDelegate = nil
-            pageSurfaces.removeValue(forKey: id)
+            self.pageSurfaces.removeValue(forKey: id)
             appliedLoadRevision.removeValue(forKey: id)
         }
     }
 
     // Re-applies the blocking rules after settings change.
     func refreshShieldScripts(_ hostName: WKWebView? = nil) {
-        guard let vaultRef else { return }
-        let webViewBatch = hostName.map { [$0] } ?? Array(pageSurfaces.values)
+        guard let vaultRef else { return }    
+        let webViewBatch = hostName.map { [$0] } ?? Array(pageSurfaces.values)    
         let blockAds = vaultRef.shieldAds
         let blockTrackers = vaultRef.shieldTrackers
         let blockRedirects = vaultRef.shieldRedirects
         let exceptions = vaultRef.shieldExceptions
-        Task { @MainActor in
+        Task {
             for hostedWebView in webViewBatch {
                 let pageHost = hostedWebView.url?.host ?? ""
                 let shieldEngaged = !exceptions.contains(pageHost) && !ContentBlockerEngine.isPageSafelisted(pageHost)
@@ -204,6 +205,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         finishTopBleedIfNeeded(scrollView)
     }
 
+
     // finish top bleed if needed
     private func finishTopBleedIfNeeded(_ scrollView: UIScrollView) {
         guard let webView = liveWebView, scrollView == webView.scrollView else { return }
@@ -231,7 +233,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         if let linkURL = webView.url { vaultRef?.logVisit(headingText: webView.title ?? "", url: linkURL) }
         (webView as? BrowsWebView)?.topBleedUnlocked = false
         syncTopScrollInset(for: webView)
-        capturePageColor(webView)
+        capturePageColor(webView) 
         if showFind, !findText.isEmpty { searchInPage(findText) }
     }
 
@@ -251,12 +253,12 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
     // captures tab preview
     private func captureTabPreview(for webView: WKWebView, tabID: UUID? = nil) {
         let id = tabID ?? focusedTabKey
-        guard let id, webView.url != nil else { return }
+        guard let id, webView.url != nil else { return }  
         let snapshotConfig = WKSnapshotConfiguration()
         snapshotConfig.snapshotWidth = NSNumber(value: 480)
         webView.takeSnapshot(with: snapshotConfig) { image, _ in
             guard let image else { return }
-            Task { @MainActor in
+            Task {
                 TabPreviewStore.singleton.storeThumb(image, for: id)
             }
         }
@@ -268,7 +270,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         return 0
     }
 
-    // Keeps content below the floating address bar.
+    // Keeps content below the floating address bar. (recieves the inset from the chrome)
     func syncTopScrollInset(for webView: WKWebView) {
         let scroll = webView.scrollView
         let indicatorTop = webView.window?.safeAreaInsets.top ?? 0
@@ -299,7 +301,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         }
         if abs(scroll.contentInset.top - comfort) > 0.5 {
             scroll.contentInset.top = comfort
-        }
+        }    
         let restY = -comfort
         if userIdle, atTop {
             if abs(scroll.contentOffset.y - restY) > 0.5 {
@@ -338,6 +340,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
             })()
             """
         Task {
+            // guard first, work after
             guard let slot = try? await webView.evaluateJavaScript(pageColorProbeJS), let draftText = slot as? String,
                 let color = UIColorProbe.fromCSSRGB(draftText)
             else { return }
@@ -364,7 +367,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
-        guard let linkURL = navigationAction.request.url else {
+        guard let linkURL = navigationAction.request.url else {  
             decisionHandler(.cancel)
             return
         }
@@ -387,6 +390,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
     ) {
         decisionHandler(navigationResponse.canShowMIMEType ? .allow : .download)
     }
+
 
     func webView(
         _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction,
@@ -436,10 +440,11 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         vaultRef?.modalLane = .downloads
     }
 
-    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {  
         downloadDestinations.removeValue(forKey: ObjectIdentifier(download))
         vaultRef?.bannerText = "Download failed — tap the link again to retry."
     }
+
 
     func queueExplainFromSelection() {
         guard let vaultRef, !vaultRef.incognito, let liveWebView else { return }
@@ -456,7 +461,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
     func queueLookupFromSelection() {
         guard let vaultRef, let liveWebView else { return }
         let hostName = liveWebView
-        Task { @MainActor in
+        Task {
             let picked = await selectedText(in: hostName)
             guard !picked.isEmpty,
                 let lookupLink = AddressResolver.coerceNavigableURL(picked, engine: vaultRef.queryEngine)
@@ -471,6 +476,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         return String((selectionSnippet as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(4000))
     }
 
+
     func harvestReadableText() async -> String {
         guard vaultRef?.incognito != true, let liveWebView else { return "" }
         let bodyPlainText = try? await liveWebView.evaluateJavaScript("document.body.innerText")
@@ -484,7 +490,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
     func searchInPage(_ query: String) {
         findText = query
         findMatchIndex = 0
-        findMatchCount = 0
+        self.findMatchCount = 0
         findRevision += 1
         let revisionNumber = findRevision
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -558,8 +564,12 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
               return { count: matches.length, index: matches.length ? 1 : 0 };
             })()
             """
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(110))
+        Task {
+            do {
+                try await Task.sleep(for: .milliseconds(110))
+            } catch {
+                logSwallowed(error)
+            }
             guard self.findRevision == revisionNumber, self.findText == query else { return }
             let searchResult = try? await liveWebView.evaluateJavaScript(findScript) as? [String: Any]
             guard self.findRevision == revisionNumber, self.findText == query, searchResult?["stale"] as? Bool != true else {
@@ -614,7 +624,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
               return { count: matches.length, index: index + 1 };
             })()
             """
-        Task { @MainActor in
+        Task {
             let moveResult = try? await liveWebView.evaluateJavaScript(moveScript) as? [String: Any]
             guard self.findText == searchQuery, self.findRevision == revisionNumber, moveResult?["stale"] as? Bool != true else {
                 return
@@ -633,7 +643,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
             self.findSavedKeyboardDismissMode = nil
         }
         if let liveWebView {
-            Task { @MainActor in
+            Task {
                 _ = try? await liveWebView.evaluateJavaScript(
                     """
                     (() => {

@@ -16,7 +16,7 @@ struct IsolatedToolbarItem<Content: ToolbarContent>: ToolbarContent {
 
     var body: some ToolbarContent {
         if #available(iOS 26.0, *) {
-            barItems.sharedBackgroundVisibility(.hidden)
+            self.barItems.sharedBackgroundVisibility(.hidden)
         } else {
             barItems
         }

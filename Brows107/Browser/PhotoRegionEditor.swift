@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Lets the user pan/zoom a gallery photo inside the same viewfinder frame as the live camera.
-struct PhotoRegionCanvas: View {
+struct PhotoRegionCanvas: View { 
     let sourceBitmap: UIImage
     @Binding var zoomScale: CGFloat
     @Binding var panShift: CGSize
@@ -26,7 +26,7 @@ struct PhotoRegionCanvas: View {
                     Image(uiImage: sourceBitmap)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.height)
+                        .frame(width: geo.size.width, height: geo.size.height) 
                         .scaleEffect(zoomScale, anchor: .center)
                         .offset(panShift)
                 }
@@ -37,7 +37,7 @@ struct PhotoRegionCanvas: View {
                 .simultaneousGesture(magnifyGesture)
                 .onChange(of: sourceBitmap) { _, _ in
                     gestureStartScale = 1
-                    panOrigin = .zero
+                    self.panOrigin = .zero
                 }
         }
         .ignoresSafeArea()
@@ -62,7 +62,7 @@ struct PhotoRegionCanvas: View {
         MagnificationGesture()
             .onChanged { slot in
                 guard gesturesEnabled else { return }
-                zoomScale = min(max(gestureStartScale * slot, 1), 4)
+                self.zoomScale = min(max(gestureStartScale * slot, 1), 4)
             }
             .onEnded { _ in
                 guard gesturesEnabled else { return }
@@ -162,6 +162,7 @@ extension ResizablePhotoSelection {
             .onEnded { _ in gestureStart = nil }
     }
 
+
     // resize gesture
     private func resizeGesture(_ corner: CropHandleCorner) -> some Gesture {
         DragGesture(coordinateSpace: .local)
@@ -190,11 +191,12 @@ extension ResizablePhotoSelection {
                 let resizeMaxY =
                     corner.isTop
                     ? gestureAnchorRect.maxY : max(min(fingerPoint.y, cropFloor), gestureAnchorRect.minY + minCropEdge)
-                selectedRect = CGRect(
+                self.selectedRect = CGRect(
                     x: resizeMinX, y: resizeMinY, width: resizeMaxX - resizeMinX, height: resizeMaxY - resizeMinY)
             }
             .onEnded { _ in gestureStart = nil }
     }
+
 
     // starts gesture
     private func beginGesture() -> CGRect {
@@ -203,7 +205,7 @@ extension ResizablePhotoSelection {
         return selectedRect
     }
 
-    private enum CropHandleCorner {
+    private enum CropHandleCorner {  
         case topLeft, topRight, bottomLeft, bottomRight
         var isLeft: Bool { self == .topLeft || self == .bottomLeft }
         var isTop: Bool { self == .topLeft || self == .topRight }
@@ -215,7 +217,7 @@ enum PhotoRegionCrop {
 
     // default rect
     static func defaultRect(in size: CGSize) -> CGRect {
-        let defaultSide = min(cropFrameSide, max(120, size.width - 80))
+        let defaultSide = min(cropFrameSide, max(120, size.width - 80)) 
         return CGRect(
             x: (size.width - defaultSide) / 2,
             y: (size.height - defaultSide) / 2,
@@ -259,6 +261,7 @@ enum PhotoRegionCrop {
 
     // upright bitmap
     private static func uprightBitmap(_ image: UIImage) -> UIImage {
+        // skip when the input is unusable
         guard image.imageOrientation != .up else { return image }
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = image.scale

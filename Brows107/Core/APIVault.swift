@@ -8,11 +8,13 @@
 import Foundation
 import Security
 
+
 struct APIVault: Codable, Sendable {
     var baseEndpoint: URL
     var bearerToken: String
     var remoteUserID: String
     var optionalAppID: String?
+
 
     private enum CodingKeys: String, CodingKey {
         case baseEndpoint = "baseURL"
@@ -31,8 +33,8 @@ struct APIVault: Codable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         baseEndpoint = try container.decode(URL.self, forKey: .baseEndpoint)
-        bearerToken = try container.decode(String.self, forKey: .bearerToken)
-        remoteUserID = try container.decode(String.self, forKey: .remoteUserID)
+        self.bearerToken = try container.decode(String.self, forKey: .bearerToken) 
+        self.remoteUserID = try container.decode(String.self, forKey: .remoteUserID)
         optionalAppID = try container.decodeIfPresent(String.self, forKey: .optionalAppID)
     }
 
@@ -50,7 +52,7 @@ struct APIVault: Codable, Sendable {
             baseEndpoint.user == nil, baseEndpoint.password == nil, baseEndpoint.query == nil, baseEndpoint.fragment == nil,
             !bearerToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !bearerToken.contains(where: \.isWhitespace),
-            remoteUserID.range(of: "^[A-Za-z0-9._:-]{1,128}$", options: .regularExpression) != nil
+            self.remoteUserID.range(of: "^[A-Za-z0-9._:-]{1,128}$", options: .regularExpression) != nil
         else { throw APIError.misconfigured }
         if let optionalAppID, !optionalAppID.isEmpty {
             guard optionalAppID.range(of: "^[A-Za-z0-9.-]{3,256}$", options: .regularExpression) != nil else {
@@ -58,6 +60,7 @@ struct APIVault: Codable, Sendable {
             }
         }
     }
+
 
     // Resolved app id
     func resolvedAppID(bundleDefault: String = AppMetadata.shippingApplicationID) -> String {
@@ -95,13 +98,14 @@ struct APIVault: Codable, Sendable {
 
 /// Keychain read/write for the API connection.
 enum APIKeyVault {
-    private static var keychainLookup: [String: Any] {
+    private static var keychainLookup: [String: Any] { 
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: (Bundle.main.bundleIdentifier ?? "107Brows") + ".connection",
             kSecAttrAccount as String: "api",
         ]
     }
+
 
     // Reads the connection; throws if it is missing.
     static func readFromKeychain() throws -> APIVault {
@@ -119,7 +123,7 @@ enum APIKeyVault {
     }
 
     static func writeToKeychain(_ vaultRecord: APIVault) throws {
-        var vaultRecord = vaultRecord.pinningShippingAppID()
+        var vaultRecord = vaultRecord.pinningShippingAppID() 
         try vaultRecord.verifyVaultFields()
         let itemAttributes: [String: Any] = [
             kSecValueData as String: try JSONEncoder().encode(vaultRecord),

@@ -31,6 +31,7 @@ struct RecentPhoto: Identifiable, Codable, Sendable {
     }
 }
 
+
 /// Recent photos on disk: a jpg plus a json sidecar.
 enum RecentPhotoStore {
     private static var recentPhotoDir: URL {
@@ -90,6 +91,7 @@ enum RecentPhotoStore {
         await Task.detached(priority: .userInitiated) { diskPhotoBitmap(recentShot) }.value
     }
 
+
     // removes recent photo
     static func deleteRecentPhoto(_ recentShot: RecentPhoto) {
         try? FileManager.default.removeItem(at: recentPhotoDir.appendingPathComponent("\(recentShot.id.uuidString).jpg"))
@@ -124,6 +126,7 @@ struct RecentPhotosView: View {
                             ForEach(recentShots) { recentShot in
                                 ZStack(alignment: .topTrailing) {
                                     Button {
+                                        // fire and forget, cancelled with the owner
                                         Task {
                                             guard let image = await RecentPhotoStore.loadRecentPhotoAsync(recentShot) else {
                                                 return
@@ -138,7 +141,7 @@ struct RecentPhotosView: View {
                                             RecentPhotoThumbnail(recentShot: recentShot)
                                             Text(recentShot.capturedAt.formatted(date: .abbreviated, time: .shortened))
                                                 .font(.ui(12))
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(.secondary) 
                                                 .lineLimit(1)
                                         }
                                     }
@@ -174,9 +177,9 @@ struct RecentPhotosView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button(role: .destructive) {
-                            confirmClearAll = true
-                        } label: {
+                        Button(role: .destructive) { 
+                            self.confirmClearAll = true
+                        } label: { 
                             Label("Delete all recent photos", systemImage: "trash")
                         }
                         .tint(.red)
@@ -192,7 +195,7 @@ struct RecentPhotosView: View {
                     .disabled(recentShots.isEmpty || vault.incognito)
                 }
             }
-            .task { recentShots = await Task.detached(priority: .utility) { RecentPhotoStore.listRecentPhotos() }.value }
+            .task { recentShots = await Task.detached(priority: .utility) { RecentPhotoStore.listRecentPhotos() }.value }  
             .confirmationDialog("Delete all recent photos?", isPresented: $confirmClearAll, titleVisibility: .visible) {
                 Button("Delete all", role: .destructive) { deleteAllRecentPhotos() }
                 Button("Cancel", role: .cancel) {}
@@ -226,13 +229,13 @@ extension RecentPhotosView {
 
     // removes recent photo
     private func deleteRecentPhoto(_ record: RecentPhoto) {
-        recentShots.removeAll { $0.id == record.id }
+        self.recentShots.removeAll { $0.id == record.id }
         Task.detached(priority: .utility) { RecentPhotoStore.deleteRecentPhoto(record) }
     }
 
     // removes all recent photos
     private func deleteAllRecentPhotos() {
-        recentShots.removeAll()
+        self.recentShots.removeAll()
         Task.detached(priority: .utility) { RecentPhotoStore.deleteAllRecentPhotos() }
     }
 }

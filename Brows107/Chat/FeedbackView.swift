@@ -32,13 +32,13 @@ struct FeedbackView: View {
                 Spacer()
                 Button {
                     dismissSheet()
-                } label: {
+                } label: {    
                     Image(systemName: "checkmark").font(.ui(16, weight: .semibold)).foregroundStyle(.white).frame(
                         width: 34, height: 34)
                 }
                 .browsGlassProminentButtonStyle().buttonBorderShape(.circle).tint(Palette.brandInk).accessibilityLabel("Done")
             }.padding(.horizontal, 20).padding(.top, 20).frame(height: 70)
-            switch feedbackPhase {
+            switch feedbackPhase { 
             case .sent:
                 result(
                     "feedback_done", "Thanks — got it", "We read every report. It helps make the next answer better.",
@@ -57,7 +57,7 @@ struct FeedbackView: View {
             if vault.launchScenario == "feedback-error" { feedbackPhase = .sent }
         }
     }
-    // feedback form pane
+    // feedback form pane 
     private var feedbackFormPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Pick anything that applies. Optional, but it helps.").font(.ui(15)).foregroundStyle(.secondary)
@@ -86,7 +86,7 @@ struct FeedbackView: View {
             Text("The answer and the page address are sent with your report.").font(.ui(12)).foregroundStyle(.tertiary)
                 .padding(.horizontal, 20).padding(.top, 16)
             Button {
-                feedbackPhase = .sent
+                self.feedbackPhase = .sent
             } label: {
                 Text("Send feedback").font(.ui(17, weight: .semibold)).foregroundStyle(.white).frame(
                     maxWidth: .infinity

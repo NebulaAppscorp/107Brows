@@ -52,7 +52,7 @@ final class LiveCamera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
 
     // Torch on/off; reports the new state.
     func toggleTorch(completion: @escaping @MainActor @Sendable (Bool) -> Void) {
-        queue.async { [weak self] in
+        self.queue.async { [weak self] in
             guard let self, let device = self.currentDevice, device.hasTorch else {
                 DispatchQueue.main.async { completion(false) }
                 return
@@ -84,7 +84,7 @@ final class LiveCamera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         }
     }
 
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {    
         guard error == nil, let payloadBytes = photo.fileDataRepresentation() else {
             DispatchQueue.main.async { self.onCapture?(nil) }
             return
@@ -101,11 +101,12 @@ final class LiveCamera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
 
     // Configure
     private func configure(shouldRun: Bool) {
-        captureSession.beginConfiguration()
+        self.captureSession.beginConfiguration()
         if captureSession.canSetSessionPreset(.high) {
             captureSession.sessionPreset = .high
         }
         for input in captureSession.inputs { captureSession.removeInput(input) }
+        // skip when the input is unusable
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
             let input = try? AVCaptureDeviceInput(device: device),
             captureSession.canAddInput(input)
@@ -114,7 +115,7 @@ final class LiveCamera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             DispatchQueue.main.async { self.running = false }
             return
         }
-        captureSession.addInput(input)
+        self.captureSession.addInput(input)
         if !captureSession.outputs.contains(photoCaptureSink), captureSession.canAddOutput(photoCaptureSink) {
             captureSession.addOutput(photoCaptureSink)
             photoCaptureSink.maxPhotoQualityPrioritization = .balanced
@@ -133,7 +134,7 @@ struct CameraPreview: UIViewRepresentable {
         hostName.preview.videoGravity = .resizeAspectFill
         hostName.preview.session = captureSession
         return hostName
-    }
+    } 
 
     func updateUIView(_ uiView: PreviewView, context: Context) {
         if uiView.preview.session !== captureSession { uiView.preview.session = captureSession }
@@ -144,7 +145,7 @@ struct CameraPreview: UIViewRepresentable {
         var preview: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
 
         override func layoutSubviews() {
-            super.layoutSubviews()
+            super.layoutSubviews() 
             guard let connection = preview.connection else { return }
             let angle: CGFloat = 90
             if connection.isVideoRotationAngleSupported(angle), connection.videoRotationAngle != angle {

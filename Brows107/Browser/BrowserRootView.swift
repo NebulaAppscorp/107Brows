@@ -1,7 +1,7 @@
 //
 //  BrowserRootView.swift
 //  Brows107
-//
+//    
 //  Created by Aleksandra Savchuk on 11/11/26.
 //
 
@@ -17,6 +17,7 @@ struct BrowserRootView: View {
     @State private var omniboxDraft = ""
     @State private var keyboardVisible = false
 
+
     private var hasPage: Bool { vault.currentTab?.pageURL != nil }
     private var showTopChrome: Bool { vault.chromePane == 1 || (vault.chromePane == 0 && !hasPage) }
     private var showBrowserBottom: Bool { vault.chromePane == 0 }
@@ -30,7 +31,7 @@ struct BrowserRootView: View {
         ZStack {
             backdrop.ignoresSafeArea()
             TabView(selection: surfaceBinding) {
-                NavigationStack {
+                NavigationStack { 
                     browser
                         .navigationBarTitleDisplayMode(.inline)
                         .browsLiquidNavBar(hidesBackground: true)
@@ -52,7 +53,7 @@ struct BrowserRootView: View {
                         // animate only on this value
                         .animation(nil, value: vault.modalLane)
                 }
-                .browsScrollEdgeEffectHidden(.bottom)
+                .browsScrollEdgeEffectHidden(.bottom) 
                 .ignoresSafeArea(.container, edges: .top)
                 .tag(0)
                 NavigationStack {
@@ -85,6 +86,7 @@ struct BrowserRootView: View {
                             webLane.findMatchCount = 0
                         }
                     )
+                    // spacing from the design
                     .padding(.bottom, keyboardVisible ? 8 : 88)
                     .zIndex(2)
                 }
@@ -97,26 +99,29 @@ struct BrowserRootView: View {
                             SitePanelView(webLane: webLane)
                                 .presentationCompactAdaptation(.popover)
                         }
+                        // Spacing from the design
                         .padding(.bottom, 70)
                 }
             }
             .onChange(of: webLane.showFind) { _, isShown in
                 if !isShown {
-                    keyboardVisible = false
+                    self.keyboardVisible = false
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) {
                 notification in
+                // frame must exist here
                 guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
                 let keyWindow = UIApplication.shared.connectedScenes
                     .compactMap { $0 as? UIWindowScene }
                     .flatMap(\.windows)
                     .first(where: \.isKeyWindow)
                 let inset: CGFloat
+                // Only when there is a key window
                 if let keyWindow {
                     let keyboardFrame = keyWindow.convert(frame, from: keyWindow.screen.coordinateSpace)
                     inset = max(0, keyWindow.bounds.maxY - keyboardFrame.minY)
-                } else {
+                } else {  
                     inset = max(0, UIScreen.main.bounds.maxY - frame.minY)
                 }
                 let isKeyboardVisible = inset > 20
@@ -132,12 +137,14 @@ struct BrowserRootView: View {
             .fullScreenCover(isPresented: cameraCover, onDismiss: { vault.drainModalQueue() }) {
                 PhotoSearchView()
             }
-            .fullScreenCover(isPresented: tabsCover, onDismiss: { vault.drainModalQueue() }) {
+            .fullScreenCover(isPresented: tabsCover, onDismiss: { vault.drainModalQueue() }) { 
                 TabsView()
             }
             .fullScreenCover(item: fullScreenPresentation, onDismiss: { vault.drainModalQueue() }) { item in
                 switch item {
+                // Library case
                 case .library: LibraryView()
+                // settings case
                 case .settings: SettingsView(webLane: webLane)
                 case .downloads: DownloadsView()
                 case .protection: ProtectionView(webLane: webLane)
@@ -151,10 +158,14 @@ struct BrowserRootView: View {
             // presented as a sheet
             .sheet(item: sheetPresentation, onDismiss: { vault.drainModalQueue() }) { item in
                 switch item {
+                // tabs
                 case .tabs: TabsView()
+                // Library case
                 case .library: LibraryView()
+                // When settings
                 case .settings: SettingsView(webLane: webLane)
                 case .camera: PhotoSearchView()
+                // visual matches
                 case .visualMatches:
                     VisualMatchesView(
                         searchPhase: vault.launchScenario == "matches-empty"
@@ -162,13 +173,18 @@ struct BrowserRootView: View {
                             : vault.launchScenario == "matches-unreadable"
                                 ? .unreadable : vault.launchScenario == "matches-offline" ? .offline : .results)
                 case .downloads: DownloadsView()
+                // when protection
                 case .protection: ProtectionView(webLane: webLane)
+                // site
                 case .site: EmptyView()
-                case .ai: PageAIView(webLane: webLane)
+                // ai
+                case .ai: PageAIView(webLane: webLane) 
                 case .menu: EmptyView()
                 case .chats: ConversationsView()
                 case .models: EmptyView()
+                // pdf case
                 case .pdf: DocumentView()
+                // when search
                 case .search: EmptyView()
                 }
             }
@@ -190,7 +206,7 @@ struct BrowserRootView: View {
             // react to the change here
             .onChange(of: vault.shieldExceptions) { _, _ in
                 webLane.refreshShieldScripts()
-                vault.writeShieldPrefs()
+                vault.writeShieldPrefs() 
             }
             .task { await applyLaunchScenario() }
             .environment(webLane)
@@ -208,6 +224,7 @@ struct BrowserRootView: View {
                         .allowsHitTesting(isBrowserMenuPresented)
                         .accessibilityHidden(!isBrowserMenuPresented)
                 }
+                // size matches the mock
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 // animate only on this value
                 .animation(.spring(response: 0.42, dampingFraction: 0.9), value: isBrowserMenuPresented)
@@ -217,8 +234,11 @@ struct BrowserRootView: View {
         .onAppear {
             if vault.launchScenario == "menu" { vault.modalLane = .menu }
         }
-    }
+    } 
+}
 
+// MARK: - BrowserRootView helpers
+extension BrowserRootView {
     // browser nav bar
     @ToolbarContentBuilder private var browserNavBar: some ToolbarContent {
         if showTopChrome {
@@ -235,9 +255,10 @@ struct BrowserRootView: View {
                 }
             } else {
                 ToolbarItem(placement: .topBarTrailing) {
+                    // tap handler below
                     Button(action: revealCameraSheet) {
                         Image(systemName: "camera.viewfinder")
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(.primary) 
                     }
                     .tint(.primary)
                     .accessibilityLabel("Search by photo")
@@ -246,12 +267,13 @@ struct BrowserRootView: View {
         }
     }
 
+
     private var surfaceBinding: Binding<Int> {
         Binding(get: { vault.chromePane }, set: { vault.chromePane = $0 })
     }
 
     // reveal camera sheet
-    private func revealCameraSheet() {
+    private func revealCameraSheet() { 
         vault.modalLane = .camera
     }
 
@@ -261,9 +283,10 @@ struct BrowserRootView: View {
     private var pdfCover: Binding<Bool> {
         Binding(
             get: { vault.modalLane == .pdf },
-            set: { if !$0, vault.modalLane == .pdf { vault.modalLane = nil } }
+            set: { if !$0, vault.modalLane == .pdf { vault.modalLane = nil } }  
         )
     }
+
 
     private var cameraCover: Binding<Bool> {
         Binding(
@@ -272,12 +295,14 @@ struct BrowserRootView: View {
         )
     }
 
+
     private var tabsCover: Binding<Bool> {
         Binding(
             get: { vault.modalLane == .tabs },
             set: { if !$0, vault.modalLane == .tabs { vault.modalLane = nil } }
         )
     }
+
 
     /// Sample data only: pretend there is history so the back chevron is active on the site panel.
     private var reviewShowsBackEnabled: Bool {
@@ -291,7 +316,7 @@ struct BrowserRootView: View {
     private var siteCover: Binding<Bool> {
         Binding(
             get: { vault.modalLane == .site },
-            set: { if !$0, vault.modalLane == .site { vault.modalLane = nil } }
+            set: { if !$0, vault.modalLane == .site { vault.modalLane = nil } }    
         )
     }
 
@@ -306,6 +331,7 @@ struct BrowserRootView: View {
         Binding(
             get: {
                 switch vault.modalLane {
+                // search
                 case .search, .pdf, .camera, .tabs, .settings, .downloads, .protection, .models, .site, .menu: nil
                 default: vault.modalLane
                 }
@@ -322,6 +348,7 @@ struct BrowserRootView: View {
             }, set: { vault.modalLane = $0 })
     }
 
+
     // Layout for browser menu scrim
     private var browserMenuScrim: some View {
         Color.clear
@@ -334,16 +361,18 @@ struct BrowserRootView: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    // browser menu overlay row
+    // browser menu overlay row    
     private var browserMenuOverlay: some View {
         VStack(spacing: 0) {
             Capsule()
                 .fill(Color(uiColor: .tertiaryLabel))
+                // size matches the mock
                 .frame(width: 36, height: 5)
                 .padding(.top, 8)
-                .padding(.bottom, 6)
+                .padding(.bottom, 6) 
             browserMenuPanel
         }
+        // Fixed size from the design
         .frame(maxWidth: .infinity)
         .background {
             Palette.canvasView
@@ -368,11 +397,12 @@ struct BrowserRootView: View {
                 style: .continuous
             )
         )
-        .accessibilityAddTraits(.isModal)
+        .accessibilityAddTraits(.isModal) 
     }
 
     // the browser menu panel block
     private var browserMenuPanel: some View {
+        // local actions
         let actions = menuActions
         let actionRows = stride(from: 0, to: actions.count, by: 5).map { start in
             Array(actions[start..<min(start + 5, actions.count)])
@@ -383,6 +413,7 @@ struct BrowserRootView: View {
                     Image(systemName: vault.currentTab?.pageURL == nil ? "safari" : "globe")
                         .font(.ui(19, weight: .medium))
                         .foregroundStyle(Palette.brandInk)
+                        // fixed size from the design
                         .frame(width: 42, height: 42)
                         .browsGlassBackground(radius: 14)
                     VStack(alignment: .leading, spacing: 3) {
@@ -402,14 +433,17 @@ struct BrowserRootView: View {
                     Button("Done") { vault.modalLane = nil }
                         .font(.ui(14, weight: .medium))
                         .padding(.horizontal, 14)
+                        // Size matches the mock
                         .frame(height: 40)
                         .browsGlassCapsule()
                 }
                 .padding(.horizontal, 4)
 
                 VStack(spacing: 16) {
+                    // One row per element
                     ForEach(Array(actionRows.enumerated()), id: \.offset) { _, row in
                         HStack(spacing: 6) {
+                            // one row per element
                             ForEach(row) { action in
                                 menuActionTile(action)
                             }
@@ -421,6 +455,7 @@ struct BrowserRootView: View {
                     Text("Privacy and settings")
                         .font(.ui(13, weight: .semibold))
                         .foregroundStyle(.secondary)
+                        // spacing from the design
                         .padding(.horizontal, 14)
                     VStack(spacing: 0) {
                         menuSettingRow("Protection", menuGlyph: "shield.lefthalf.filled") { vault.modalLane = .protection }
@@ -434,12 +469,16 @@ struct BrowserRootView: View {
                         menuRowSeparator
                         menuSettingRow("Settings", menuGlyph: "gearshape") { vault.modalLane = .settings }
                     }
+                    // spacing from the design
                     .padding(.horizontal, 14)
                     .browsGlassBackground(radius: 24)
                 }
             }
+            // Breathing room
             .padding(.horizontal, 20)
+            // Spacing from the design
             .padding(.top, 2)
+            // Breathing room
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity, alignment: .top)
     }
@@ -476,6 +515,7 @@ struct BrowserRootView: View {
                 BrowserMenuAction(
                     headingText: "Reader", menuGlyph: "doc.plaintext",
                     action: {
+                        // detached from the call site on purpose
                         Task {
                             if vault.launchScenario != nil {
                                 webLane.pageText = SampleContent.readerBody
@@ -503,14 +543,16 @@ struct BrowserRootView: View {
             ShareLink(item: linkURL) { menuActionLabel(action) }
                 .buttonStyle(.plain)
         } else {
+            // tap handler below
             Button {
                 action.action?()
             } label: {
                 menuActionLabel(action)
             }
             .buttonStyle(.plain)
-        }
+        }  
     }
+
 
     // menu action label
     private func menuActionLabel(_ action: BrowserMenuAction) -> some View {
@@ -518,6 +560,7 @@ struct BrowserRootView: View {
             Image(systemName: action.menuGlyph)
                 .font(.ui(18, weight: .medium))
                 .foregroundStyle(Color(uiColor: .label))
+                // size matches the mock
                 .frame(width: 46, height: 46)
                 .browsGlassBackground(radius: 14)
             Text(action.headingText)
@@ -526,11 +569,14 @@ struct BrowserRootView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.8)
+                // size matches the mock
                 .frame(maxWidth: .infinity, minHeight: 26, maxHeight: 26)
         }
+        // Size matches the mock
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
     }
+
 
     // Menu row separator
     private var menuRowSeparator: some View {
@@ -539,11 +585,13 @@ struct BrowserRootView: View {
 
     // menu setting row
     private func menuSettingRow(_ headingText: String, menuGlyph: String, action: @escaping () -> Void) -> some View {
+        // Plain button, styling comes from the modifiers
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: menuGlyph)
                     .font(.ui(17, weight: .regular))
                     .foregroundStyle(Color(uiColor: .label))
+                    // size matches the mock
                     .frame(width: 24)
                 Text(headingText)
                     .font(.ui(16))
@@ -554,6 +602,7 @@ struct BrowserRootView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 12)
+            // fixed size from the design
             .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -567,7 +616,7 @@ struct BrowserRootView: View {
         if browserHome || chatPane {
             ShellBackdrop()
         } else {
-            pageTopColor.ignoresSafeArea()
+            self.pageTopColor.ignoresSafeArea()
         }
     }
 
@@ -587,18 +636,20 @@ struct BrowserRootView: View {
                 } else {
                     WebPageView(tab: tab, webSession: webLane).id(tab.id).ignoresSafeArea()
                 }
+                // optional page error, may be missing
                 if let pageError = webLane.pageError {
                     pageTopColor
                         .ignoresSafeArea()
                     PageErrorStateView(loadFault: pageError) {
                         resolvePageErrorPrimary(pageError)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // fixed size from the design
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)  
                 }
             }
             .ignoresSafeArea(.container, edges: .top)
         } else {
-            BrowserHomeView()
+            BrowserHomeView()  
         }
     }
 
@@ -627,15 +678,14 @@ struct BrowserRootView: View {
         guard !vault.incognito else {
             vault.bannerText = "AI is off in private tabs."
             return
-        }
+        }  
         guard vault.currentTab?.pageURL != nil else {
             vault.chromePane = 1
             return
-        }
+        } 
         vault.modalLane = .ai
     }
 
-    @MainActor
     private func applyLaunchScenario() async {
         webLane.vaultRef = vault
         guard let review = vault.launchScenario else { return }
@@ -652,7 +702,7 @@ struct BrowserRootView: View {
             vault.modalLane = nil
         } else if review == "search" {
             #if DEBUG
-                omniboxDraft = "how to brew coffee"
+                self.omniboxDraft = "how to brew coffee"
             #endif
             vault.modalLane = .search
         } else {
@@ -679,9 +729,11 @@ struct BrowserRootView: View {
     // Primary button on the page error screen (retry / edit address).
     private func resolvePageErrorPrimary(_ error: PageLoadError) {
         switch error {
+        // when not found
         case .notFound:
             omniboxDraft = vault.currentTab?.pageURL?.absoluteString ?? ""
             vault.modalLane = .search
+        // Offline case
         case .offline, .notResponding:
             webLane.pageError = nil
             if LinkPulse.singleton.linkSevered {

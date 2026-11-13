@@ -31,9 +31,9 @@
                 Section {
                     Button("Restore default (from app)") {
                         do {
-                            try APIKeyVault.deleteFromKeychain()
+                            try APIKeyVault.deleteFromKeychain() 
                             APIBootstrap.primeAPIVault()
-                            reloadForm()
+                            reloadForm()    
                             linkEstablished = true
                             settingsToast = "Default Nebula connection restored."
                         } catch {
@@ -42,6 +42,7 @@
                     }
                     Button("Save connection") {
                         do {
+                            // link url must exist here
                             guard let linkURL = URL(string: endpointDraft.trimmingCharacters(in: .whitespacesAndNewlines)) else {
                                 throw APIError.misconfigured
                             }
@@ -71,7 +72,7 @@
                     Text(
                         "The address and bearer token are stored only in this device’s Keychain. Saving does not send a network request."
                     )
-                }
+                } 
             }
             .navigationTitle("Test connection").navigationBarTitleDisplayMode(.inline)
             .browsLiquidNavBar()
@@ -86,14 +87,20 @@
             .onDisappear { bearerDraft = "" }
         }
 
+    }
+
+
+    // form plumbing
+    extension ConnectionSettingsView {
         // reloads form
         private func reloadForm() {
+            // Handle stored vault if it is there
             if let storedVault = try? APIKeyVault.readFromKeychain() {
                 endpointDraft = storedVault.baseEndpoint.absoluteString
                 userIDDraft = storedVault.remoteUserID
                 appIDDraft = storedVault.resolvedAppID()
                 linkEstablished = true
-            } else {
+            } else {    
                 endpointDraft = AppMetadata.nebulaBaseURL.absoluteString
                 userIDDraft = "1"
                 appIDDraft = AppMetadata.shippingApplicationID

@@ -1,7 +1,7 @@
 //
 //  Theme.swift
 //  Brows107
-//
+// 
 //  Created by Aleksandra Savchuk on 27/10/26.
 //
 
@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 import Speech
 import AVFoundation
+
 
 /// Deep links into system settings.
 enum BrowsSystemSettings {
@@ -24,6 +25,7 @@ enum BrowsSystemSettings {
 struct BrowsFallbackGlassButtonStyle: ButtonStyle {
     // injected state
     @Environment(\.colorScheme) private var interfaceScheme
+
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -61,9 +63,9 @@ struct BrowsGlassBackgroundModifier: ViewModifier {
             content.background(
                 .ultraThinMaterial,
                 in: RoundedRectangle(cornerRadius: radius, style: .continuous)
-            )
+            ) 
         }
-    }
+    } 
 }
 
 struct BrowsGlassCapsuleModifier: ViewModifier {
@@ -81,6 +83,7 @@ struct BrowsGlassCapsuleModifier: ViewModifier {
 }
 
 struct BrowsGlassCircleModifier: ViewModifier {
+    // interface scheme
     @Environment(\.colorScheme) private var interfaceScheme
 
     func body(content: Content) -> some View {
@@ -110,6 +113,7 @@ struct BrowsGlassButtonModifier: ViewModifier {
         }
     }
 }
+
 
 struct BrowsGlassProminentButtonModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -156,6 +160,7 @@ extension View {
         modifier(BrowsGlassProminentButtonModifier())
     }
 
+
     // Native nav bar; optionally hides its background and tracks scroll.
     func browsLiquidNavBar(hidesBackground: Bool = false, tracksScroll: Bool = false) -> some View {
         modifier(BrowsLiquidNavBarModifier(hidesBackground: hidesBackground, tracksScroll: tracksScroll))
@@ -193,6 +198,7 @@ extension View {
             .modifier(BrowsSheetEdgeAttachModifier())
     }
 
+
     // brows sheet canvas background
     func browsSheetCanvasBackground() -> some View {
         presentationBackground {
@@ -200,6 +206,7 @@ extension View {
         }
     }
 }
+
 
 struct BrowsFlushBottomSheetModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -211,6 +218,7 @@ struct BrowsFlushBottomSheetModifier: ViewModifier {
     }
 }
 
+
 /// Removes the floating-card look of iOS sheets so width and bottom sit flush with the screen.
 struct BrowsSheetEdgeAttachModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -218,13 +226,15 @@ struct BrowsSheetEdgeAttachModifier: ViewModifier {
     }
 }
 
-struct BrowsSheetEdgeAttachHost: UIViewControllerRepresentable {
+
+struct BrowsSheetEdgeAttachHost: UIViewControllerRepresentable {  
     func makeUIViewController(context: Context) -> UIViewController {
         UIViewController()
     }
 
     func updateUIViewController(_ controller: UIViewController, context: Context) {
         DispatchQueue.main.async {
+            // nothing to do without this
             guard let sheet = controller.presentationController as? UISheetPresentationController else { return }
             sheet.prefersEdgeAttachedInCompactHeight = true
             sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = true
@@ -272,7 +282,7 @@ struct BundledImage: View {
     }
 }
 
-struct BrandMark: View {
+struct BrandMark: View {  
     var assetName = "welcome_mark"
     var markSide: CGFloat = 56
     var body: some View { BundledImage(assetName: assetName).frame(width: markSide, height: markSide) }
@@ -280,6 +290,7 @@ struct BrandMark: View {
 
 /// Full-width green call-to-action.
 struct PrimaryButton: View {
+    // heading text
     let headingText: String
     var enabled = true
     let action: () -> Void

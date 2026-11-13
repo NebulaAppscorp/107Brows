@@ -39,7 +39,7 @@ struct PaywallView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 6)
-                .frame(height: 56)
+                .frame(height: 56) 
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
@@ -66,7 +66,7 @@ struct PaywallView: View {
                         }
                         .padding(.top, 14)
 
-                        perksPanel.padding(.top, 24)
+                        self.perksPanel.padding(.top, 24)
 
                         VStack(spacing: 10) {
                             paywallPlanTile("yearly", headingText: "Yearly", price: "$119.99")
@@ -86,7 +86,7 @@ struct PaywallView: View {
                                     .foregroundStyle(.tertiary)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, 8) 
 
                             Button {
                                 Task { await purchase.commitPurchase() }
@@ -95,7 +95,7 @@ struct PaywallView: View {
                                     .font(.ui(17, weight: .semibold))
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 20)
-                            }
+                            }  
                             .browsGlassProminentButtonStyle()
                             .tint(Palette.brandInk)
                             .controlSize(.large)
@@ -132,7 +132,7 @@ struct PaywallView: View {
         .task { if !usesSampleData { await purchase.fetchProducts() } }
         .onChange(of: purchase.entitlementActive) { _, slot in
             if slot {
-                vault.proEntitlementActive = true
+                self.vault.proEntitlementActive = true
                 dismissHandler()
             }
         }
@@ -193,7 +193,7 @@ struct PaywallView: View {
             in: RoundedRectangle(cornerRadius: 24, style: .continuous)
         )
         .shadow(color: Palette.rgb(0x002417).opacity(0.06), radius: 8, y: 2)
-        .shadow(color: Palette.rgb(0x002417).opacity(0.05), radius: 30, y: 14)
+        .shadow(color: Palette.rgb(0x002417).opacity(0.05), radius: 30, y: 14) 
     }
 }
 
@@ -220,11 +220,12 @@ extension PaywallView {
         }
     }
 
+
     // paywall plan tile
     private func paywallPlanTile(_ id: String, headingText: String, price: String) -> some View {
         let planActive = purchase.pickedPlanID == id
         return Button {
-            purchase.pickedPlanID = id
+            self.purchase.pickedPlanID = id
         } label: {
             HStack(spacing: 12) {
                 Circle()

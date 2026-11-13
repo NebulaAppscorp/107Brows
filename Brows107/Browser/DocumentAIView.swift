@@ -1,4 +1,4 @@
-//
+//    
 //  DocumentAIView.swift
 //  Brows107
 //
@@ -8,15 +8,22 @@
 import SwiftUI
 
 struct DocumentAIView: View {
+    // whole text of the PDF, used when the question is about the document
     let fullDocumentText: String
+    // only the page that is on screen
     let pageText: String
     @Environment(BrowserStore.self) private var vault
     @Environment(\.dismiss) private var dismissSheet
+    // answer state
     @State private var documentAnswer: String?
     @State private var pdfPromptDraft = ""
+    // true while a request is running
     @State private var busy = false
     @State private var documentAIWork: Task<Void, Never>?
+    // one remote thread id per sheet, so follow-ups stay together    
     @State private var threadRemoteID = UUID().uuidString
+
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -25,7 +32,7 @@ struct DocumentAIView: View {
                         Text("Ask about this document").font(.title3.weight(.semibold))
                         Text("Only readable text is processed when you ask.").font(.subheadline).foregroundStyle(.secondary)
                     }
-                    if busy {
+                    if busy {  
                         HStack {
                             ProgressView()
                             Text("Reading the document…")
@@ -36,6 +43,7 @@ struct DocumentAIView: View {
                             }
                         }
                     }
+                    // handle document answer if it is there
                     if let documentAnswer {
                         Section {
                             Text(documentAnswer).textSelection(.enabled)
@@ -52,7 +60,7 @@ struct DocumentAIView: View {
                     Button("Send", systemImage: "arrow.up") { runDocumentAIPrompt(pdfPromptDraft) }.labelStyle(.iconOnly)
                         .browsGlassProminentButtonStyle().disabled(
                             busy || pdfPromptDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }.padding().browsGlassCapsule().padding()
+                }.padding().browsGlassCapsule().padding() 
             }
             .navigationTitle("Ask PDF").navigationBarTitleDisplayMode(.inline)
             .browsLiquidNavBar()
@@ -69,7 +77,7 @@ extension DocumentAIView {
         guard !vault.incognito, !busy else { return }
         let sourceText = prompt == "Explain this page" ? pageText : fullDocumentText
         guard !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            vault.bannerText = "This PDF has no selectable text (scanned?)."
+            self.vault.bannerText = "This PDF has no selectable text (scanned?)."
             return
         }
         busy = true
@@ -81,19 +89,22 @@ extension DocumentAIView {
             }
             do {
                 if vault.launchScenario != nil {
+                    // Wait for it before moving on
                     try await Task.sleep(for: .milliseconds(650))
                     documentAnswer = SampleContent.fixtureSummaryBullets.map { $0.0 + "\n" + $0.1 }.joined(separator: "\n\n")
                 } else {
+                    // Suspends here until the result is back
                     let plainTextSourceID = try await vault.aiService.preparePlainText(sourceText)
+                    // Async hop, keep the work above it cheap
                     let relayPayload = try await vault.aiService.relayChat(
                         remoteChatID: threadRemoteID, promptText: prompt, photoJPEG: nil, sourceIDs: [plainTextSourceID],
                         webLookupEnabled: false, think: vault.deepThink)
                     try Task.checkCancellation()
                     documentAnswer = relayPayload.assistantBody
-                    threadRemoteID = relayPayload.remoteChatID
+                    self.threadRemoteID = relayPayload.remoteChatID
                 }
                 try Task.checkCancellation()
-                pdfPromptDraft = ""
+                self.pdfPromptDraft = ""
             } catch is CancellationError {} catch { if !Task.isCancelled { vault.bannerText = error.localizedDescription } }
         }
     }

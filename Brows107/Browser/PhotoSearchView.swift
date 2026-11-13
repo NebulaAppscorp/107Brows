@@ -52,6 +52,7 @@ struct PhotoSearchView: View {
             } else {
                 GeometryReader { geo in
                     ZStack {
+                        // handle shot bitmap if it is there
                         if let shotBitmap = pickedFrame, (editingRegion || visualSearchBusy) {
                             PhotoRegionCanvas(
                                 sourceBitmap: shotBitmap,
@@ -59,10 +60,12 @@ struct PhotoSearchView: View {
                                 panShift: $regionOffset,
                                 gesturesEnabled: editingRegion && !visualSearchBusy
                             )
+                            // Size matches the mock
                             .frame(width: geo.size.width, height: geo.size.height)
                             .clipped()
                         } else {
                             cameraBackground(size: geo.size)
+                                // fixed size from the design
                                 .frame(width: geo.size.width, height: geo.size.height)
                                 .clipped()
                                 .allowsHitTesting(false)
@@ -70,7 +73,8 @@ struct PhotoSearchView: View {
                         cameraChrome
                             .zIndex(10)
                     }
-                    .frame(width: geo.size.width, height: geo.size.height)
+                    // size matches the mock
+                    .frame(width: geo.size.width, height: geo.size.height) 
                     .clipped()
                     .coordinateSpace(name: "photo-search")
                     .onAppear { containerSize = geo.size }
@@ -90,14 +94,14 @@ struct PhotoSearchView: View {
         .preferredColorScheme(.dark)
         // native toolbar, so the glass comes for free
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear { if !matchesVisible { startCamera() } }
+        .onAppear { if !matchesVisible { startCamera() } }  
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
             guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
             keyboardHeight = max(0, UIScreen.main.bounds.height - frame.minY)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
-        }
+            self.keyboardHeight = 0
+        } 
         // cleanup
         .onDisappear {
             liveLens.stop()
@@ -105,12 +109,14 @@ struct PhotoSearchView: View {
         }
         .onChange(of: galleryToken) { _, pickerToken in
             guard let pickerToken else { return }
+            // runs off the current call stack
             Task {
                 guard let slot = await loadPickerImage(pickerToken) else {
-                    vault.bannerText = "This photo couldn’t be loaded. Try another image."
+                    self.vault.bannerText = "This photo couldn’t be loaded. Try another image."
                     galleryToken = nil
                     return
                 }
+                // suspends here until the result is back
                 let decodedShot = await Task.detached(priority: .userInitiated) {
                     PhotoSearchJPEG.downsampleForDisplay(ImagePayload(slot).bitmap)
                 }.value
@@ -135,23 +141,28 @@ struct PhotoSearchView: View {
         )
     }
 
+
     // layout crop rect
     private func layoutCropRect(in size: CGSize) -> CGRect {
         if selectionRect.width > 0 { return selectionRect }
         if defaultViewfinderRect.width > 0 { return defaultViewfinderRect }
-        return photoSelectionRect(in: size)
+        return photoSelectionRect(in: size)  
     }
 
     // photo selection rect
     private func photoSelectionRect(in size: CGSize) -> CGRect {
         let topEdge: CGFloat = 134
+        // local shutter top
         let shutterTop = size.height - 58 - 74
         let questionCenterY = min(640, shutterTop - 82)
+        // available height
         let availableHeight = max(120, questionCenterY - 22 - 24 - topEdge)
         let side = min(300, max(120, size.width - 102), availableHeight)
         let defaultCenterY = defaultViewfinderRect.width > 0 ? defaultViewfinderRect.midY + 4 : size.height / 2 - 7
+        // work out the min center y
         let minCenterY = topEdge + side / 2
         let maxCenterY = questionCenterY - 22 - 24 - side / 2
+        // Work out the center y
         let centerY = min(max(defaultCenterY, minCenterY), maxCenterY)
         return CGRect(x: (size.width - side) / 2, y: centerY - side / 2, width: side, height: side)
     }
@@ -162,9 +173,11 @@ struct PhotoSearchView: View {
             let showSelectionOverlay = editingRegion || (visualSearchBusy && pickedFrame != nil)
             let stageWidth = proxy.size.width
             let viewportHeight = proxy.size.height
+            // work out the top reserve
             let topReserve = max(proxy.safeAreaInsets.top + 8, 70)
             let shutterReserve = max(proxy.safeAreaInsets.bottom + 24, 58)
             let topChromeBottom = topReserve + 40
+            // Local shutter top
             let shutterTop = viewportHeight - shutterReserve - 74
             let focusSide: CGFloat = 252
             let focusCenterY = (topChromeBottom + shutterTop) / 2
@@ -184,12 +197,14 @@ struct PhotoSearchView: View {
                     ZStack {
                         Circle()
                             .fill(.ultraThinMaterial)
+                            // Size matches the mock
                             .frame(width: 82, height: 82)
                         ProgressView()
                             .progressViewStyle(.circular)
                             .tint(Palette.rgb(0x3DDC97))
                             .scaleEffect(1.8)
                     }
+                    // fixed size from the design
                     .frame(width: 82, height: 82)
                     .position(
                         x: stageWidth / 2,
@@ -202,14 +217,15 @@ struct PhotoSearchView: View {
                 if !showSelectionOverlay {
                     ViewfinderCorners()
                         .stroke(Color.white.opacity(0.9), style: StrokeStyle(lineWidth: 2, lineCap: .butt, lineJoin: .miter))
-                        .frame(width: focusSide, height: focusSide)
+                        // size matches the mock
+                        .frame(width: focusSide, height: focusSide) 
                         // background goes behind everything
                         .background {
                             GeometryReader { geometry in
                                 Color.clear.preference(
                                     key: ViewfinderRectKey.self,
                                     value: geometry.frame(in: .named("photo-search"))
-                                )
+                                )  
                             }
                         }
                         .position(x: stageWidth / 2, y: focusCenterY)
@@ -234,24 +250,32 @@ struct PhotoSearchView: View {
                             cameraControl("arrow.triangle.2.circlepath.camera", label: "Switch camera") { liveLens.flip() }
                         }
                     }
+                    // spacing from the design
                     .padding(.horizontal, 16)
+                    // spacing from the design
                     .padding(.top, topReserve)
                     Spacer(minLength: 0)
                     shutterRow
+                        // fixed size from the design
                         .frame(height: 74)
                         .padding(.horizontal, 36)
+                        // spacing from the design
                         .padding(.bottom, shutterReserve)
                 }
-                .frame(width: stageWidth, height: viewportHeight)
+                // fixed size from the design
+                .frame(width: stageWidth, height: viewportHeight)    
                 if !showSelectionOverlay {
                     hintPill
+                        // fixed size from the design
                         .frame(maxWidth: .infinity, alignment: .center)
+                        // Breathing room
                         .padding(.top, hintTop)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .allowsHitTesting(false)
                 }
                 if editingRegion && !visualSearchBusy {
                     photoQuestionField
+                        // fixed size from the design
                         .frame(width: min(330, max(240, stageWidth - 72)), height: 44)
                         .position(x: stageWidth / 2, y: questionCenterY)
                 }
@@ -259,10 +283,15 @@ struct PhotoSearchView: View {
                     photoTeachingCard
                 }
             }
+            // size matches the mock
             .frame(width: stageWidth, height: viewportHeight)
-        }
+        } 
     }
 
+}
+
+// MARK: - PhotoSearchView helpers
+extension PhotoSearchView {
     // Photo question field (view)
     private var photoQuestionField: some View {
         HStack(spacing: 8) {
@@ -278,12 +307,15 @@ struct PhotoSearchView: View {
                 .autocorrectionDisabled()
                 .submitLabel(.done)
         }
+        // spacing from the design 
         .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // size matches the mock
+        .frame(maxWidth: .infinity, maxHeight: .infinity) 
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1))
         .accessibilityIdentifier("photo.question")
     }
+
 
     private var showTeachingCard: Bool {
         !teachingDismissed && !editingRegion && !visualSearchBusy && pickedFrame == nil && !matchesVisible
@@ -299,6 +331,7 @@ struct PhotoSearchView: View {
                 .tracking(-0.23)
         }
         .foregroundStyle(.white)
+        // spacing from the design
         .padding(.leading, 14)
         .padding(.trailing, 16)
         .padding(.vertical, 9)
@@ -314,12 +347,14 @@ struct PhotoSearchView: View {
     // Shutter row, built separately to keep body short
     private var shutterRow: some View {
         HStack(alignment: .center) {
+            // Tap handler below
             Button {
                 showRecents = true
             } label: {
                 Image(systemName: "clock")
                     .font(.ui(18))
                     .foregroundStyle(.white)
+                    // size matches the mock
                     .frame(width: 46, height: 46)
                     .browsGlassBackground(radius: 14)
             }
@@ -328,6 +363,7 @@ struct PhotoSearchView: View {
             .opacity(visualSearchBusy ? 0.45 : 1)
             .accessibilityLabel("Recent searches")
             Spacer(minLength: 0)
+            // Plain button, styling comes from the modifiers
             Button {
                 editingRegion ? confirmRegionSearch() : capture()
             } label: {
@@ -335,6 +371,7 @@ struct PhotoSearchView: View {
                     Circle().stroke(.white, lineWidth: 4)
                     Circle().fill(Palette.rgb(0x3DDC97)).frame(width: 58, height: 58)
                 }
+                // Fixed size from the design
                 .frame(width: 74, height: 74)
                 .contentShape(Circle())
             }
@@ -344,7 +381,7 @@ struct PhotoSearchView: View {
             Spacer(minLength: 0)
             if editingRegion {
                 Button {
-                    cancelRegionEdit()
+                    cancelRegionEdit()  
                 } label: {
                     GalleryButtonLabel()
                 }
@@ -368,6 +405,7 @@ struct PhotoSearchView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Palette.brandInk)
+                    // fixed size from the design
                     .frame(width: 52, height: 52)
                 Image(systemName: "viewfinder")
                     .font(.ui(24))
@@ -375,7 +413,7 @@ struct PhotoSearchView: View {
             }
             Spacer().frame(height: 22)
             Text("Point at one thing")
-                .font(.ui(20, weight: .semibold))
+                .font(.ui(20, weight: .semibold))  
                 .tracking(-0.45)
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
@@ -384,20 +422,23 @@ struct PhotoSearchView: View {
                 .font(.ui(15))
                 .tracking(-0.23)
                 .foregroundStyle(Color.white.opacity(0.7))
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.center)  
                 .fixedSize(horizontal: false, vertical: true)
             Spacer().frame(height: 20)
             Button("Got it") { teachingDismissed = true }
-                .font(.ui(17, weight: .semibold))
+                .font(.ui(17, weight: .semibold))    
                 .tracking(-0.43)
                 .foregroundStyle(Palette.rgb(0x0A2E20))
+                // spacing from the design
                 .padding(.horizontal, 24)
+                // Breathing room
                 .padding(.vertical, 15)
                 // background goes behind everything
                 .background(Palette.brandInk, in: Capsule())
                 .buttonStyle(.plain)
         }
         .padding(22)
+        // Size matches the mock
         .frame(width: 330)
         // background fill
         .background(Palette.rgb(0x141B18), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -406,13 +447,15 @@ struct PhotoSearchView: View {
 
     // camera control
     private func cameraControl(_ iconName: String, label: String, action: @escaping () -> Void) -> some View {
+        // tap handler below
         Button(action: action) {
             Image(systemName: iconName)
                 .font(.ui(16, weight: .regular))
                 .foregroundStyle(.white)
+                // Size matches the mock
                 .frame(width: 40, height: 40)
                 .browsGlassCircle()
-        }
+        } 
         .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
@@ -421,14 +464,16 @@ struct PhotoSearchView: View {
     @ViewBuilder private func cameraBackground(size: CGSize) -> some View {
         if let shotBitmap = pickedFrame {
             Color.black
+                // size matches the mock
                 .frame(width: size.width, height: size.height)
                 .overlay {
                     Image(uiImage: shotBitmap)
                         .resizable()
                         .scaledToFill()
+                        // fixed size from the design
                         .frame(width: size.width, height: size.height)
                 }
-                .overlay(.black.opacity(0.24))
+                .overlay(.black.opacity(0.24)) 
                 .clipped()
                 .ignoresSafeArea()
         } else if liveLens.running {
@@ -437,6 +482,7 @@ struct PhotoSearchView: View {
                 .clipped()
                 .ignoresSafeArea()
         } else {
+            // work out the stage scale
             let stageScale = size.width / 402
             ZStack(alignment: .topLeading) {
                 LinearGradient(
@@ -451,6 +497,7 @@ struct PhotoSearchView: View {
                     .blur(radius: 90 * stageScale * 0.42)
                     .offset(x: 30 * stageScale, y: 300 * stageScale)
             }
+            // Fixed size from the design
             .frame(width: size.width, height: size.height)
             .clipped()
             .ignoresSafeArea()
@@ -491,13 +538,15 @@ struct PhotoSearchView: View {
 
     // opens the recent photo
     private func openRecentPhoto(_ record: RecentPhoto, _ image: UIImage) {
-        Task { @MainActor in
+        Task {
             let payload = ImagePayload(image)
+            // Async hop, keep the work above it cheap
             let decoded = await Task.detached(priority: .userInitiated) {
                 PhotoSearchJPEG.downsampleForDisplay(payload.bitmap)
             }.value
+            // No raw phase, no point continuing
             guard let rawPhase = record.searchPhase, let phase = VisualSearchState(rawValue: rawPhase) else {
-                commitPickedPhoto(decoded, chooseRegion: true)
+                commitPickedPhoto(decoded, chooseRegion: true) 
                 return
             }
             pickedFrame = decoded
@@ -511,7 +560,7 @@ struct PhotoSearchView: View {
             hasUserQuestion = !photoQuestion.isEmpty
             visualAnswer = record.answerText
             visualHits = VisualMatch.fromSavedPages(record.savedPages ?? [])
-            searchState = phase
+            self.searchState = phase
             matchesVisible = true
         }
     }
@@ -530,13 +579,14 @@ struct PhotoSearchView: View {
         let offset = regionOffset
         let question = photoQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
         let rasterEnvelope = ImagePayload(frameStill)
-        photoQuestionFocused = false
+        self.photoQuestionFocused = false
         editingRegion = false
         visualSearchBusy = true
         visualAnswer = nil
         visualHits = nil
         hasUserQuestion = !question.isEmpty
-        visualSearchFlight = Task { @MainActor in
+        visualSearchFlight = Task {
+            // Suspends here until the result is back
             let cropped = await Task.detached(priority: .userInitiated) {
                 PhotoRegionCrop.crop(
                     sourceBitmap: rasterEnvelope.bitmap,
@@ -551,6 +601,7 @@ struct PhotoSearchView: View {
                 return
             }
             croppedImage = cropped
+            // wait for it before moving on
             await performSearch(for: cropped, question: question)
         }
     }
@@ -560,19 +611,21 @@ struct PhotoSearchView: View {
         editingRegion = false
         pickedFrame = nil
         croppedImage = nil
-        regionScale = 1
+        self.regionScale = 1
         regionOffset = .zero
         selectionRect = .zero
         startCamera()
     }
 
+
     // loads picker image
     private func loadPickerImage(_ pickerToken: PhotosPickerItem) async -> UIImage? {
         if let payloadBytes = try? await pickerToken.loadTransferable(type: Data.self) {
             return await Task.detached(priority: .userInitiated) {
-                PhotoSearchJPEG.decodeDownsampled(payloadBytes: payloadBytes, maxPixelSize: 1600) ?? UIImage(data: payloadBytes)
+                PhotoSearchJPEG.decodeDownsampled(payloadBytes: payloadBytes, maxPixelSize: 1600) ?? UIImage(data: payloadBytes)    
             }.value
         }
+        // picked payload must exist here
         guard let pickedPayload = try? await pickerToken.loadTransferable(type: PickedPhotoData.self) else { return nil }
         let raw = pickedPayload.payloadBytes
         return await Task.detached(priority: .userInitiated) {
@@ -596,10 +649,11 @@ struct PhotoSearchView: View {
             return
         }
         if cameraAuth == .denied || cameraAuth == .restricted {
-            if let linkURL = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(linkURL) }
+            // only when there is a link url
+            if let linkURL = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(linkURL) } 
             return
         }
-        guard liveLens.running else {
+        guard liveLens.running else { 
             vault.bannerText = "A camera is not available on this device. Choose a photo from your library."
             return
         }
@@ -608,9 +662,10 @@ struct PhotoSearchView: View {
         visualAnswer = nil
         visualHits = nil
         liveLens.capture { capturedShot in
+            // Need shot to go on
             guard let shot = capturedShot else {
                 visualSearchBusy = false
-                vault.bannerText = "Couldn’t take this photo. Try again."
+                self.vault.bannerText = "Couldn’t take this photo. Try again."
                 return
             }
             guard !vault.incognito else {
@@ -622,10 +677,11 @@ struct PhotoSearchView: View {
             let targetRect = defaultViewfinderRect.width > 0 ? defaultViewfinderRect : PhotoRegionCrop.defaultRect(in: size)
             selectionRect = targetRect
             photoQuestion = ""
-            let rasterEnvelope = ImagePayload(shot)
+            let rasterEnvelope = ImagePayload(shot)  
             liveLens.stop()
             pickedFrame = nil
-            visualSearchFlight = Task { @MainActor in
+            visualSearchFlight = Task {
+                // Async hop, keep the work above it cheap
                 let cropped = await Task.detached(priority: .userInitiated) {
                     PhotoRegionCrop.crop(
                         sourceBitmap: rasterEnvelope.bitmap,
@@ -639,6 +695,7 @@ struct PhotoSearchView: View {
                     visualSearchBusy = false
                     return
                 }
+                // State flips inside the animation block
                 withAnimation(.snappy(duration: 0.2)) {
                     pickedFrame = rasterEnvelope.bitmap
                     croppedImage = cropped
@@ -649,6 +706,7 @@ struct PhotoSearchView: View {
         }
     }
 
+
     // search
     private func search() {
         guard !visualSearchBusy, let shot = pickedFrame else { return }
@@ -657,17 +715,20 @@ struct PhotoSearchView: View {
             return
         }
         visualSearchBusy = true
-        visualSearchFlight = Task { @MainActor in
+        visualSearchFlight = Task {
+            // Suspends here
             await performSearch(for: shot)
         }
     }
 
     // tries visual search again
     private func retryVisualSearch() {
+        // early exit
         guard let shot = croppedImage ?? pickedFrame else { return }
         searchState = .loading
         visualSearchFlight?.cancel()
-        visualSearchFlight = Task { @MainActor in
+        // detached from the call site on purpose
+        visualSearchFlight = Task {
             await performSearch(for: shot)
         }
     }
@@ -675,7 +736,7 @@ struct PhotoSearchView: View {
     // retake photo
     private func retakePhoto() {
         matchesVisible = false
-        pickedFrame = nil
+        self.pickedFrame = nil
         croppedImage = nil
         editingRegion = false
         regionScale = 1
@@ -684,24 +745,30 @@ struct PhotoSearchView: View {
         startCamera()
     }
 
-    @MainActor
-    private func performSearch(for shot: UIImage, question: String? = nil) async {
+    private func performSearch(for shot: UIImage, question: String? = nil) async {  
         defer { visualSearchBusy = false }
         guard await vault.requireServerSubscription(), !Task.isCancelled else { return }
         let historyID = currentPhotoHistoryID ?? UUID()
         currentPhotoHistoryID = historyID
         let questionContext = question ?? photoQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
         if vault.launchScenario != nil {
-            try? await Task.sleep(for: .milliseconds(700))
+            do {
+                try await Task.sleep(for: .milliseconds(700))
+            } catch {
+                logSwallowed(error)
+            }
             guard !Task.isCancelled else { return }
             visualHits = nil
             searchState = .results
             matchesVisible = true
             return
         }
+        // work out the raster envelope
         let rasterEnvelope = ImagePayload(shot)
+        // async hop, keep the work above it cheap
         let payloadBytes = await Task.detached(priority: .userInitiated) { PhotoSearchJPEG.data(from: rasterEnvelope.bitmap) }
             .value
+        // no payload bytes, no point continuing
         guard let payloadBytes, payloadBytes.count <= 5_242_880 else {
             vault.bannerText = APIError.tooLarge.localizedDescription
             return
@@ -736,23 +803,26 @@ struct PhotoSearchView: View {
                 visualHits = []
                 searchState = .unreadable
                 matchesVisible = true
+                // Suspends here
                 await RecentPhotoStore.savePhotoResult(
                     shot, id: historyID, question: questionContext, answer: answer, pages: [], phase: .unreadable)
                 return
             }
-            let candidatePages = PhotoSearchJPEG.savedPagesFromReply(reply)
+            let candidatePages = PhotoSearchJPEG.savedPagesFromReply(reply) 
             let relevantPages = PhotoSearchJPEG.filterVisualPages(candidatePages, question: questionContext, answer: answer)
             let checkedPages = await PhotoSearchJPEG.verifyVisualPages(relevantPages)
             let deduplicated = PhotoSearchJPEG.deduplicate(checkedPages)
             if deduplicated.isEmpty && (questionContext.isEmpty || answer.isEmpty) {
                 answer =
                     "I couldn’t verify any close product matches for this photo. Try a closer crop or add the brand or model if you know it."
-                visualAnswer = answer
+                self.visualAnswer = answer
             }
+            // found
             let found = VisualMatch.fromSavedPages(deduplicated)
             visualHits = found
             searchState = found.isEmpty ? .empty : .results
             matchesVisible = true
+            // wait for it before moving on
             await RecentPhotoStore.savePhotoResult(
                 shot, id: historyID, question: questionContext, answer: answer, pages: deduplicated, phase: searchState)
         } catch is CancellationError {
@@ -761,6 +831,7 @@ struct PhotoSearchView: View {
             visualHits = []
             searchState = .offline
             matchesVisible = true
+            // Wait for it before moving on
             await RecentPhotoStore.savePhotoResult(
                 shot, id: historyID, question: questionContext, answer: nil, pages: [], phase: .offline)
         } catch {
@@ -769,7 +840,9 @@ struct PhotoSearchView: View {
     }
 }
 
+
 struct ViewfinderRectKey: PreferenceKey {
+    // keeps default value
     static let defaultValue: CGRect = .zero
     // Reduce
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
@@ -782,10 +855,12 @@ struct ViewfinderRectKey: PreferenceKey {
 struct PickedPhotoData: Transferable {
     let payloadBytes: Data
 
-    static var transferRepresentation: some TransferRepresentation {
+    // current transfer representation
+    static var transferRepresentation: some TransferRepresentation { 
         DataRepresentation(importedContentType: .image) { PickedPhotoData(payloadBytes: $0) }
     }
 }
+
 
 struct GalleryButtonLabel: View {
     var body: some View {
@@ -794,6 +869,7 @@ struct GalleryButtonLabel: View {
             .resizable()
             .scaledToFit()
             .frame(width: 21, height: 16.5)
+            // size matches the mock
             .frame(width: 46, height: 46)
             .browsGlassBackground(radius: 14)
     }

@@ -13,6 +13,7 @@ import UIKit
 
     private(set) var tabThumbnails: [UUID: UIImage] = [:]
 
+
     // Thumb for tab
     func thumbForTab(_ id: UUID) -> UIImage? { tabThumbnails[id] }
 
@@ -24,7 +25,7 @@ import UIKit
     }
 
     // drops thumb
-    func dropThumb(for id: UUID) {
+    func dropThumb(for id: UUID) {  
         tabThumbnails.removeValue(forKey: id)
     }
 }
@@ -33,6 +34,7 @@ import UIKit
 enum TabPageSnapshot {
     // works out placeholder thumb
     static func resolvePlaceholderThumb(for linkURL: URL) async -> UIImage? {
+        // guard first, work after
         guard let host = linkURL.host?.lowercased(), !host.isEmpty else { return nil }
         if let og = await openGraphPreview(linkURL) { return og }
         return await googleFaviconBitmap(host: host)
@@ -55,11 +57,15 @@ enum TabPageSnapshot {
         guard let (payloadBytes, response) = try? await URLSession.shared.data(for: thumbFetchRequest),
             let http = response as? HTTPURLResponse, (200..<400).contains(http.statusCode),
             let html = String(data: payloadBytes, encoding: .utf8) ?? String(data: payloadBytes, encoding: .isoLatin1)
-        else { return nil }
+        else { return nil }    
+        // precondition, otherwise skip
         guard let imageURL = extractOGImage(from: html, base: page) else { return nil }
         return await fetchRemoteThumb(imageURL, referer: page)
     }
+}
 
+// MARK: - TabPageSnapshot helpers
+extension TabPageSnapshot {
     private static func extractOGImage(from html: String, base: URL) -> URL? {
         let patterns = [
             #"property=["']og:image["'][^>]*content=["']([^"']+)["']"#,
@@ -67,6 +73,7 @@ enum TabPageSnapshot {
             #"<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']"#,
         ]
         for pattern in patterns {
+            // early exit 
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
             let htmlScanRange = NSRange(html.startIndex..., in: html)
             guard let match = regex.firstMatch(in: html, options: [], range: htmlScanRange),
@@ -78,6 +85,7 @@ enum TabPageSnapshot {
         }
         return nil
     }
+
 
     // fetches remote thumb
     private static func fetchRemoteThumb(_ linkURL: URL, referer: URL) async -> UIImage? {
@@ -91,6 +99,7 @@ enum TabPageSnapshot {
         return thumbBitmap
     }
 
+
     private static func googleFaviconBitmap(host: String) async -> UIImage? {
         let faviconEndpoint = faviconServiceURL(host: host)
         guard let linkURL = faviconEndpoint else { return nil }
@@ -98,7 +107,7 @@ enum TabPageSnapshot {
         thumbFetchRequest.timeoutInterval = 4
         let payloadPair = try? await URLSession.shared.data(for: thumbFetchRequest)
         guard let payloadBytes = payloadPair?.0 else { return nil }
-        return UIImage(data: payloadBytes)
+        return UIImage(data: payloadBytes) 
     }
 
     // favicon service url
@@ -110,4 +119,4 @@ enum TabPageSnapshot {
         ]
         return faviconQuery.url
     }
-}
+} 

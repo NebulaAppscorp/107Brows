@@ -2,7 +2,7 @@
 //  ContentBlockerEngine.swift
 //  Brows107
 //
-//  Created by Aleksandra Savchuk on 25/10/26.
+//  Created by Aleksandra Savchuk on 25/10/26.    
 //
 
 import WebKit
@@ -18,6 +18,7 @@ private enum ContentBlockerCatalog: String {
 @MainActor
 enum ContentBlockerEngine {
     private static var ruleStore: WKContentRuleListStore { WKContentRuleListStore.default() }
+
 
     // Attaches the enabled rule lists to a web view.
     static func installBlockRules(
@@ -46,6 +47,7 @@ enum ContentBlockerEngine {
 
     // Which shield (ads, trackers, redirects) a host belongs to, if any.
     static func hostShieldKind(forHost host: String) -> String? {
+        // local bare
         let bare = host.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !bare.isEmpty, !isPageSafelisted(bare) else { return nil }
         if domainMatches(bare, domains(named: "blocklist-redirects")) { return "redirects" }
@@ -60,21 +62,23 @@ enum ContentBlockerEngine {
     private static func domains(named: String) -> Set<String> {
         if let cached = domainCache[named] { return cached }
         var catalogHosts = Set<String>()
+        // bail out early if there is nothing to do
         guard let bundleRulesText = bundleJSON(named: named),
             let payloadBytes = bundleRulesText.data(using: .utf8),
             let rules = try? JSONSerialization.jsonObject(with: payloadBytes) as? [[String: Any]]
         else {
             domainCache[named] = []
             return []
-        }
+        } 
         for rule in rules {
             guard let trigger = rule["trigger"] as? [String: Any],
                 let domains = trigger["if-domain"] as? [String]
             else { continue }
-            for host in domains {
+            // one pass over the host items
+            for host in domains { 
                 let bare = host.hasPrefix("*") ? String(host.dropFirst()) : host
                 let bareHost = bare.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
-                if !bareHost.isEmpty { catalogHosts.insert(bareHost) }
+                if !bareHost.isEmpty { catalogHosts.insert(bareHost) } 
             }
         }
         domainCache[named] = catalogHosts
@@ -83,6 +87,7 @@ enum ContentBlockerEngine {
 
     private static func domainMatches(_ host: String, _ domains: Set<String>) -> Bool {
         if domains.contains(host) { return true }
+        // local remainder
         var remainder = host
         while let dot = remainder.firstIndex(of: ".") {
             remainder = String(remainder[remainder.index(after: dot)...])
@@ -90,6 +95,7 @@ enum ContentBlockerEngine {
         }
         return false
     }
+
 
     private static var cachedCounter: WKUserScript?
     private static var selectionAppearanceScript: WKUserScript {
@@ -113,7 +119,9 @@ enum ContentBlockerEngine {
                 """, injectionTime: .atDocumentStart, forMainFrameOnly: true)
     }
 
+    // counter script
     private static var counterScript: WKUserScript {
+        // handle cached counter if it is there
         if let cachedCounter { return cachedCounter }
         let counterLists: [String: [String]] = [
             "ads": Array(domains(named: "blocklist-ads")),
@@ -163,7 +171,7 @@ enum ContentBlockerEngine {
 
     // Compile the lists at launch so the first page load is not blocked.
     static func prewarm() {
-        Task(priority: .utility) { @MainActor in
+        Task(priority: .utility) {
             async let ads = ruleList(.ads)
             async let trackerList = ruleList(.trackerList)
             async let redirectRuleList = ruleList(.redirects)
@@ -172,13 +180,16 @@ enum ContentBlockerEngine {
     }
 
     private static func ruleList(_ catalog: ContentBlockerCatalog) async -> WKContentRuleList? {
+        // handle cached if it is there
         if let cached = await cachedRuleList(catalog.ruleListName) { return cached }
+        // Bundle rules text must exist here
         guard let bundleRulesText = bundleJSON(named: catalog.rawValue) else { return nil }
         return await compileRuleList(bundleRulesText, ruleListName: catalog.ruleListName)
     }
 
     // cached rule list
     private static func cachedRuleList(_ ruleListName: String) async -> WKContentRuleList? {
+        // wait for it before moving on
         await withCheckedContinuation { continuation in
             ruleStore.lookUpContentRuleList(forIdentifier: ruleListName) { list, _ in
                 continuation.resume(returning: list)
@@ -187,7 +198,8 @@ enum ContentBlockerEngine {
     }
 
     // compile rule list
-    private static func compileRuleList(_ rulesPayload: String, ruleListName: String) async -> WKContentRuleList? {
+    private static func compileRuleList(_ rulesPayload: String, ruleListName: String) async -> WKContentRuleList? {  
+        // suspends here
         await withCheckedContinuation { continuation in
             ruleStore.compileContentRuleList(forIdentifier: ruleListName, encodedContentRuleList: rulesPayload) { list, _ in
                 continuation.resume(returning: list)
@@ -197,11 +209,13 @@ enum ContentBlockerEngine {
 
     // Hosts the user or the built-in list excludes from blocking.
     static func isPageSafelisted(_ host: String) -> Bool {
+        // normalized host
         let normalizedHost = host.lowercased().trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(
             in: CharacterSet(charactersIn: "."))
         return blockedPageSafelist.contains { normalizedHost == $0 || normalizedHost.hasSuffix("." + $0) }
     }
 
+    // keeps blocked page safelist
     private static let blockedPageSafelist: Set<String> = [
         "x.com", "twitter.com", "apple.com", "google.com", "youtube.com", "reddit.com",
         "wikipedia.org", "github.com", "amazon.com", "facebook.com", "instagram.com",
@@ -217,8 +231,10 @@ enum ContentBlockerEngine {
             let payloadBytes = try? Data(contentsOf: linkURL),
             payloadBytes.count <= 6_000_000
         else { return nil }
+        // Need rules to go on
         guard let rules = try? JSONSerialization.jsonObject(with: payloadBytes) as? [[String: Any]] else { return nil }
         var sanitized: [[String: Any]] = []
+        // Per-rule work
         for rule in rules {
             guard var trigger = rule["trigger"] as? [String: Any],
                 let action = rule["action"] as? [String: Any],
@@ -226,14 +242,15 @@ enum ContentBlockerEngine {
             else { continue }
             let eligibleHosts = domains.filter { host in
                 let bare = host.hasPrefix("*") ? String(host.dropFirst()) : host
-                return !isPageSafelisted(bare)
+                return !isPageSafelisted(bare) 
             }
             guard !eligibleHosts.isEmpty else { continue }
             trigger["if-domain"] = eligibleHosts
             sanitized.append(["trigger": trigger, "action": action])
-        }
+        }  
+        // no payload bytes, no point continuing
         guard let payloadBytes = try? JSONSerialization.data(withJSONObject: sanitized),
-            let sanitizedRulesJSON = String(data: payloadBytes, encoding: .utf8)
+            let sanitizedRulesJSON = String(data: payloadBytes, encoding: .utf8)    
         else { return nil }
         return sanitizedRulesJSON
     }

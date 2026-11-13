@@ -1,4 +1,4 @@
-//
+// 
 //  ATTConsent.swift
 //  Brows107
 //
@@ -9,7 +9,7 @@ import AppTrackingTransparency
 import UIKit
 import Observation
 
-@Observable @MainActor final class ATTConsent {
+@Observable @MainActor final class ATTConsent {  
     private(set) var attSettled = ATTrackingManager.trackingAuthorizationStatus != .notDetermined
     private var requesting = false
 
@@ -18,15 +18,15 @@ import Observation
         guard !attSettled, !requesting, UIApplication.shared.applicationState == .active else { return }
         requesting = true
         do { try await Task.sleep(for: .milliseconds(400)) } catch {
-            requesting = false
+            self.requesting = false
             return
         }
         guard UIApplication.shared.applicationState == .active else {
-            requesting = false
+            self.requesting = false
             return
         }
         let attOutcome = await ATTrackingManager.requestTrackingAuthorization()
         attSettled = attOutcome != .notDetermined
-        requesting = false
+        self.requesting = false
     }
 }

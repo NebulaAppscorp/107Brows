@@ -2,18 +2,20 @@
 //  SampleDataInstaller.swift
 //  Brows107
 //
-//  Created by Aleksandra Savchuk on 05/11/26.
+//  Created by Aleksandra Savchuk on 05/11/26. 
 //
 
 import SwiftUI
 
 @MainActor
 enum SampleDataInstaller {
+    // page aiscenarios
     static let pageAIScenarios: Set<String> = [
         "ai", "ai-quota", "ai-last", "ai-nocontent", "ai-offline", "generating", "gen-stopped", "gen-offline",
         "answer", "answer-medium", "answer-error", "answer-notonpage", "answer-streaming", "answer-sources",
         "answer-citation", "feedback", "feedback-sent", "feedback-error",
     ]
+
 
     // Applies the scenario named in the -scenario launch argument.
     static func apply(on vault: BrowserStore) {
@@ -50,7 +52,7 @@ enum SampleDataInstaller {
                 let secondFixtureURL = fixtureCacheDir.appending(path: "second.html")
                 try
                     "<html><head><title>Local browser check</title></head><body><h1>Local browser check</h1><a href='second.html'>Open second page</a></body></html>"
-                    .write(to: leadFixtureURL, atomically: true, encoding: .utf8)
+                    .write(to: leadFixtureURL, atomically: true, encoding: .utf8) 
                 try "<html><head><title>Second local page</title></head><body><h1>Second local page</h1></body></html>".write(
                     to: secondFixtureURL, atomically: true, encoding: .utf8)
                 vault.tabStrip[0].pageURL = leadFixtureURL
@@ -132,7 +134,7 @@ enum SampleDataInstaller {
                 BrowserTab(pageTitle: "SF Symbols 8", pageURL: URL(string: "https://developer.apple.com/sf-symbols/")),
             ]
             vault.activeTabKey = vault.tabStrip[0].id
-        }
+        } 
         if vault.launchScenario == "private" { vault.toggleIncognito(true) }
         if vault.launchScenario == "menu" { vault.modalLane = .menu }
         if vault.launchScenario == "tabs" { vault.modalLane = .tabs }
@@ -145,14 +147,15 @@ enum SampleDataInstaller {
                         messageBody: SampleContent.chatAnswer, fromVisitor: false,
                         citationPages: Array(SampleContent.fixturePages.prefix(3))),
                 ]
-            )
+            )    
             vault.aiThreads = [seedConversation]
             vault.activeThreadKey = seedConversation.id
-        }
+        } 
         if vault.launchScenario == "chats" {
             let fixtureCalendar = Calendar.current
             // fixture chat timestamp
             func fixtureChatTimestamp(_ day: Int, _ hour: Int, _ minute: Int) -> Date {
+                // day anchor
                 let dayAnchor = fixtureCalendar.date(byAdding: .day, value: -day, to: Date()) ?? Date()
                 return fixtureCalendar.date(bySettingHour: hour, minute: minute, second: 0, of: dayAnchor) ?? dayAnchor
             }
@@ -167,5 +170,5 @@ enum SampleDataInstaller {
                 Conversation(threadTitle: "Summarize this article for me", threadStamp: fixtureChatTimestamp(1, 8, 35)),
             ]
         }
-    }
+    }    
 }

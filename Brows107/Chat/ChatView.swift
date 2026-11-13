@@ -24,6 +24,7 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 13) {
+                        // Optional active thread, may be missing
                         if let activeThread = vault.currentThread, !activeThread.threadTurns.isEmpty {
                             ForEach(activeThread.threadTurns) { turn in
                                 ChatBubble(turn: turn)
@@ -59,7 +60,9 @@ struct ChatView: View {
                 }
             }
             inputDeck
+                // Spacing from the design
                 .padding(.horizontal, 12)
+                // breathing room
                 .padding(.bottom, Self.keyboardGap)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -78,7 +81,13 @@ struct ChatView: View {
         .animation(.smooth(duration: 0.24), value: vault.modalLane == .models)
         .onChange(of: galleryAttachToken) { _, item in
             Task {
-                if let transferBlob = try? await item?.loadTransferable(type: Data.self),
+                var transferBlob: Data?
+                do {
+                    transferBlob = try await item?.loadTransferable(type: Data.self)
+                } catch {
+                    print("gallery attach failed: \(error)")
+                }
+                if let transferBlob,
                     let pickedBitmap = UIImage(data: transferBlob)
                 {
                     vault.attachedPhoto = pickedBitmap
@@ -87,6 +96,7 @@ struct ChatView: View {
         }
     }
 
+    // keeps keyboard gap
     private static let keyboardGap: CGFloat = 4
 
     // empty conversation row
@@ -98,7 +108,9 @@ struct ChatView: View {
                 .foregroundStyle(.secondary).padding(.top, 6)
             GeometryReader { geometry in
                 VStack(spacing: 0) {
+                    // rows are keyed by id so animations stay stable
                     ForEach(chatPromptIdeas, id: \.self) { suggestion in
+                        // tap handler below
                         Button {
                             vault.composerDraft = suggestion
                             DispatchQueue.main.async { composerFocused = true }
@@ -119,10 +131,12 @@ struct ChatView: View {
                 .frame(width: geometry.size.width + 40, height: geometry.size.height)
                 // background goes behind everything
                 .background(Palette.canvasView, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .offset(x: -20)
+                .offset(x: -20)    
             }
             .frame(height: 164)
+            // breathing room 
             .padding(.top, 24)
+            // Plain button, styling comes from the modifiers
             Button {
                 shufflePromptIdeas()
             } label: {
@@ -135,14 +149,15 @@ struct ChatView: View {
     // input deck row
     private var inputDeck: some View {
         @Bindable var vault = vault
-        return VStack(spacing: 0) {
+        return VStack(spacing: 0) { 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     if vault.currentThread?.threadTurns.contains(where: { !$0.fromVisitor }) == true {
+                        // plain button, styling comes from the modifiers
                         Button {
                             vault.modalLane = .models
                         } label: {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 8) { 
                                 Image(systemName: "chevron.down")
                                     .font(.ui(15, weight: .regular))
                                     .foregroundStyle(Palette.brandInk)
@@ -152,12 +167,14 @@ struct ChatView: View {
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
                             }
+                            // Breathing room
                             .padding(.leading, 14)
                             .padding(.trailing, 16)
+                            // Fixed size from the design
                             .frame(height: 40)
                             .background(Palette.composerChip, in: Capsule())
                             .shadow(color: Palette.rgb(0x002417).opacity(interfaceScheme == .dark ? 0 : 0.1), radius: 3, y: 2)
-                            .shadow(color: Palette.rgb(0x002417).opacity(interfaceScheme == .dark ? 0 : 0.06), radius: 9, y: 8)
+                            .shadow(color: Palette.rgb(0x002417).opacity(interfaceScheme == .dark ? 0 : 0.06), radius: 9, y: 8) 
                         }
                         .buttonStyle(.plain)
                     }
@@ -171,7 +188,7 @@ struct ChatView: View {
             // background goes behind everything
             .background(Color.clear)
             if let attachedBitmap = vault.attachedPhoto {
-                HStack {
+                HStack {  
                     ZStack(alignment: .topTrailing) {
                         Image(uiImage: attachedBitmap)
                             .resizable()
@@ -184,6 +201,7 @@ struct ChatView: View {
                             Image(systemName: "xmark")
                                 .font(.ui(10, weight: .bold))
                                 .foregroundStyle(.white)
+                                // fixed size from the design
                                 .frame(width: 18, height: 18)
                                 .background(Color.black.opacity(0.55), in: Circle())
                         }
@@ -194,6 +212,7 @@ struct ChatView: View {
                     Spacer(minLength: 0)
                 }
                 .fixedSize(horizontal: false, vertical: true)
+                // breathing room
                 .padding(.top, 12)
             }
             HStack(alignment: .bottom, spacing: 12) {
@@ -201,6 +220,7 @@ struct ChatView: View {
                     Image(systemName: "plus.circle")
                         .font(.ui(20, weight: .regular))
                         .foregroundStyle(Color(uiColor: .tertiaryLabel))
+                        // fixed size from the design
                         .frame(width: 24, height: 34)
                 }
                 TextField("Message", text: $vault.composerDraft, axis: .vertical)
@@ -223,10 +243,12 @@ struct ChatView: View {
                     ).accessibilityIdentifier("chat.send")
             }
             .padding(6)
-            .padding(.leading, 8)
+            // Breathing room
+            .padding(.leading, 8)    
             .background(Palette.canvasView, in: Capsule())
             .overlay(Capsule().stroke(Palette.brandInk.opacity(interfaceScheme == .dark ? 0.28 : 0.18)))
             .frame(height: 46)
+            // Spacing from the design
             .padding(.top, 12)
             Spacer(minLength: 8).frame(height: 8)
             Text("AI can make mistakes. Check important details.").font(.ui(11)).foregroundStyle(.tertiary)
@@ -234,7 +256,8 @@ struct ChatView: View {
                 .padding(.top, 8)
         }
         .padding(.horizontal, 12)
-        .padding(.top, 12)
+        .padding(.top, 12)    
+        // Breathing room
         .padding(.bottom, 10)
         .background(Color.clear)
     }
@@ -244,6 +267,7 @@ struct ChatView: View {
 extension ChatView {
     @ViewBuilder
     private func modeToggle(headingText: String, iconName: String, active: Bool, action: @escaping () -> Void) -> some View {
+        // work out the button
         let button = Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
@@ -255,7 +279,9 @@ extension ChatView {
                     .foregroundStyle(active ? Palette.brandInk : Color(uiColor: .secondaryLabel))
                     .lineLimit(1)
             }
+            // Breathing room
             .padding(.leading, 14)
+            // breathing room
             .padding(.trailing, 16)
             .frame(height: 40)
             .fixedSize(horizontal: true, vertical: false)
@@ -276,10 +302,12 @@ extension ChatView {
         if nextOrder == chatPromptIdeas, nextOrder.count > 1 {
             nextOrder.append(nextOrder.removeFirst())
         }
-        withAnimation(.snappy(duration: 0.2)) { chatPromptIdeas = nextOrder }
+        withAnimation(.snappy(duration: 0.2)) { chatPromptIdeas = nextOrder } 
     }
 
+
     private func promptIdeaIcon(for suggestion: String) -> String {
+        // map the state to what we show
         switch suggestion {
         case "Summarize a link I paste": "link"
         case "Find where this photo is from": "photo.on.rectangle"
@@ -287,6 +315,7 @@ extension ChatView {
         }
     }
 }
+
 
 /// Turns markdown-ish answers into plain text for copy / share.
 enum ChatAnswerText {
@@ -299,7 +328,9 @@ enum ChatAnswerText {
             #"\(\s*Source:[^)]*\)"#,
             #"\(\s*\)"#,
         ]
+        // one pass over the pattern items
         for pattern in patterns {
+            // need expression to go on
             guard let expression = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
             slot = expression.stringByReplacingMatches(in: slot, range: NSRange(slot.startIndex..., in: slot), withTemplate: "")
         }
@@ -310,8 +341,9 @@ enum ChatAnswerText {
     }
 }
 
-/// Message bubble with actions under assistant replies.
+/// Message bubble with actions under assistant replies.  
 struct ChatBubble: View {
+    // current turn
     let turn: ChatMessage
     @Environment(BrowserStore.self) private var vault
     @State private var expanded = false
@@ -333,8 +365,10 @@ struct ChatBubble: View {
                                 .font(.ui(17))
                                 .foregroundStyle(Palette.visitorInk)
                                 .padding(.horizontal, 16)
+                                // spacing from the design
                                 .padding(.vertical, 12)
                                 .background(Palette.brandWash, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                // spacing from the design
                                 .padding(.trailing, 0.7)
                         }
                     }
@@ -342,9 +376,9 @@ struct ChatBubble: View {
             } else {
                 if !turn.citationPages.isEmpty {
                     Button {
-                        expanded.toggle()
+                        self.expanded.toggle()
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 6) { 
                             Image(systemName: "link").foregroundStyle(Color(uiColor: .tertiaryLabel))
                             Text("Referenced \(turn.citationPages.count) sources").foregroundStyle(
                                 Color(uiColor: .secondaryLabel))
@@ -353,16 +387,19 @@ struct ChatBubble: View {
                                 .foregroundStyle(Color(uiColor: .tertiaryLabel))
                                 .rotationEffect(.degrees(expanded ? 180 : 0))
                         }
-                        .font(.ui(12))
+                        .font(.ui(12)) 
                     }
                     .buttonStyle(.plain)
+                    // fixed size from the design
                     .frame(height: 20, alignment: .leading)
                     if expanded {
                         VStack(spacing: 0) {
+                            // Rows are keyed by id so animations stay stable
                             ForEach(Array(turn.citationPages.enumerated()), id: \.element.id) { index, source in
                                 if index > 0 {
                                     Rectangle().fill(Color(uiColor: .separator)).frame(height: 1).padding(.leading, 46)
                                 }
+                                // plain button, styling comes from the modifiers
                                 Button {
                                     vault.navigateInput(source.pageURL.absoluteString)
                                 } label: {
@@ -383,12 +420,14 @@ struct ChatBubble: View {
                                         Spacer(minLength: 0)
                                     }
                                     .padding(.horizontal, 14)
+                                    // Fixed size from the design
                                     .frame(height: 59)
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
+                        // spacing from the design
                         .padding(.top, 8)
                     }
                     Spacer().frame(height: 10)
@@ -400,7 +439,7 @@ struct ChatBubble: View {
                     .textSelection(.enabled)
                     .contextMenu {
                         Button(liked ? "Liked" : "Helpful", systemImage: liked ? "hand.thumbsup.fill" : "hand.thumbsup") {
-                            liked.toggle()
+                            self.liked.toggle()
                         }
                         .tint(liked ? Palette.brandInk : nil)
                         Button("Report answer", systemImage: "hand.thumbsdown") { feedbackPresented = true }
@@ -408,18 +447,21 @@ struct ChatBubble: View {
                 if !turn.citationPages.isEmpty {
                     Spacer().frame(height: 8)
                     HStack(spacing: 4) {
+                        // rows are keyed by id so animations stay stable
                         ForEach(Array(turn.citationPages.prefix(3).enumerated()), id: \.offset) { index, citationPage in
+                            // tap handler below
                             Button {
                                 vault.navigateInput(citationPage.pageURL.absoluteString)
                             } label: {
                                 Text("\(index + 1)")
                                     .font(.ui(11))
                                     .foregroundStyle(Palette.brandInk)
+                                    // Breathing room
                                     .padding(.horizontal, 5)
                                     .frame(height: 15)
                                     // background fill
                                     .background(Palette.brandWash, in: RoundedRectangle(cornerRadius: 5))
-                            }
+                            }    
                             .buttonStyle(.plain)
                             .accessibilityLabel("Source \(index + 1): \(citationPage.pageTitle)")
                         }
@@ -431,7 +473,7 @@ struct ChatBubble: View {
                         speech.isSpeaking ? "Stop speaking" : "Read aloud",
                         iconName: speech.isSpeaking ? "stop.fill" : "speaker.wave.2"
                     ) {
-                        speech.toggle(ChatAnswerText.plain(turn.messageBody))
+                        self.speech.toggle(ChatAnswerText.plain(turn.messageBody))  
                     }
                     ShareLink(item: ChatAnswerText.plain(turn.messageBody)) {
                         actionIcon("Share", iconName: "square.and.arrow.up")
@@ -441,6 +483,7 @@ struct ChatBubble: View {
                     }
                     .labelStyle(.iconOnly)
                     .font(.ui(14))
+                    // size matches the mock
                     .frame(width: 36, height: 36)
                     .background(Palette.raisedFill, in: Circle())
                     actionButton("Regenerate", iconName: "arrow.clockwise") { vault.regenerateAssistant() }
@@ -456,10 +499,12 @@ struct ChatBubble: View {
     }
 }
 
+
 // MARK: - Helpers
 extension ChatBubble {
     // Action button
     private func actionButton(_ headingText: String, iconName: String, action: @escaping () -> Void) -> some View {
+        // plain button, styling comes from the modifiers
         Button(headingText, systemImage: iconName, action: action)
             .labelStyle(.iconOnly)
             .font(.ui(14))
@@ -502,7 +547,8 @@ final class NativeSpeechPlayer: NSObject, ObservableObject, @preconcurrency AVSp
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         isSpeaking = true
         synthesizer.speak(utterance)
-    }
+    } 
+
 
     // stops it
     func stop() {
@@ -515,7 +561,7 @@ final class NativeSpeechPlayer: NSObject, ObservableObject, @preconcurrency AVSp
         Task { @MainActor [weak self] in self?.isSpeaking = false }
     }
 
-    // speech synthesizer
+    // speech synthesizer  
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         Task { @MainActor [weak self] in self?.isSpeaking = false }
     }

@@ -10,7 +10,7 @@ import SwiftUI
 @main struct Brows107App: App {
     @State private var vault: BrowserStore
     init() {
-        let slot = BrowserStore()
+        let slot = BrowserStore() 
         _vault = State(initialValue: slot)
     }
     var body: some Scene {
@@ -32,6 +32,7 @@ private struct WindowColorScheme: UIViewRepresentable {
         hostName.backgroundColor = .clear
         return hostName
     }
+
 
     func updateUIView(_ hostName: SchemeView, context: Context) {
         let resolvedStyle: UIUserInterfaceStyle
@@ -63,6 +64,7 @@ private struct WindowColorScheme: UIViewRepresentable {
 
 /// Root: welcome flow → paywall → browser.
 struct AppRootView: View {
+    // vault 
     @Environment(BrowserStore.self) private var vault
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var welcomeComplete = false
@@ -75,7 +77,8 @@ struct AppRootView: View {
         welcomeGate && !vault.paywallUp ? .light : vault.preferredScheme
     }
 
-    var body: some View {
+
+    var body: some View {  
         @Bindable var vault = vault
         ZStack {
             Group {
@@ -83,7 +86,7 @@ struct AppRootView: View {
                     OnboardingView { withAnimation(.smooth(duration: 0.38)) { vault.paywallUp = true } }
                 } else {
                     BrowserRootView()
-                }
+                } 
             }
             .allowsHitTesting(!vault.paywallUp)
             .accessibilityHidden(vault.paywallUp)
@@ -92,7 +95,7 @@ struct AppRootView: View {
                     withAnimation(.smooth(duration: 0.38)) {
                         if welcomeGate {
                             vault.openBrowserHome()
-                            welcomeComplete = true
+                            self.welcomeComplete = true
                             vault.welcomeUp = false
                             if vault.launchScenario == nil { onboardingComplete = true }
                         }
@@ -121,16 +124,19 @@ struct AppRootView: View {
                 }
                 .font(.ui(15, weight: .semibold))
                 .foregroundStyle(.primary)
+                // Spacing from the design
                 .padding(.horizontal, 17)
+                // spacing from the design
                 .padding(.vertical, 11)
                 // background goes behind everything
                 .background(.regularMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.7))
+                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.7)) 
                 .shadow(color: .black.opacity(0.12), radius: 15, y: 6)
+                // spacing from the design
                 .padding(.top, 8)
                 // enter/leave animation
                 .transition(.move(edge: .top).combined(with: .opacity))
-                .zIndex(20)
+                .zIndex(20) 
             }
         }
         .animation(.snappy(duration: 0.24), value: vault.copyToastVisible)
@@ -159,8 +165,14 @@ struct AppRootView: View {
                 {
                     UIApplication.shared.open(linkURL)
                 } else {
+                    // detached from the call site on purpose
                     Task {
-                        try? await Task.sleep(for: .milliseconds(250))
+                        do {
+                            // Wait for it before moving on
+                            try await Task.sleep(for: .milliseconds(250))
+                        } catch {
+                            logSwallowed(error)
+                        }
                         vault.bannerText = "Can’t open the update right now, try again in a bit."
                     }
                 }
@@ -176,6 +188,7 @@ struct AppRootView: View {
         }
         // kicked off here so it cancels with the view
         .task {
+            // suspends here
             await Task.yield()
             await vault.restorePersistedStateIfNeeded()
             if vault.launchScenario == "paywall" { vault.paywallUp = true }
@@ -198,6 +211,6 @@ struct AppRootView: View {
         }
         .onChange(of: vault.paywallUp) { _, isUp in
             if !isUp { Task { await vault.syncProEntitlement() } }
-        }
+        }    
     }
 }

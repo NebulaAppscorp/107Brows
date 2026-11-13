@@ -21,7 +21,7 @@ struct DownloadsView: View {
     private let rowSeparator = Palette.rgb(0xD6E2DC)
     private var items: [DownloadItem] {
         let downloadSource: [DownloadItem]
-        if !vault.savedDownloads.isEmpty {
+        if !vault.savedDownloads.isEmpty { 
             downloadSource = vault.savedDownloads
         } else if vault.launchScenario != nil {
             let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)
@@ -67,10 +67,10 @@ struct DownloadsView: View {
             }
             return (headingText, groupedFill[day] ?? [])
         }
-    }
+    }  
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack {    
                 Palette.canvasView.ignoresSafeArea()
                 if items.isEmpty {
                     VStack(spacing: 0) {
@@ -84,7 +84,7 @@ struct DownloadsView: View {
                         Text(pdfOnly ? "Downloaded PDF files will show up here." : "Files you download will show up here.")
                             .font(.ui(15))
                             .foregroundStyle(.secondary)
-                            .padding(.top, 6)
+                            .padding(.top, 6)  
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -137,7 +137,7 @@ struct DownloadsView: View {
                 }
                 IsolatedToolbarItem {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
+                        Menu { 
                             Button(role: .destructive) {
                                 clearingAll = true
                             } label: {
@@ -173,7 +173,7 @@ struct DownloadsView: View {
                     } else {
                         vault.savedDownloads.removeAll()
                     }
-                    vault.flushSnapshot()
+                    self.vault.flushSnapshot()
                 }
             }
             .confirmationDialog(
@@ -196,7 +196,7 @@ extension DownloadsView {
         let label = Button {
             guard item.transferProgress >= 1, !item.transferPaused else { return }
             if let linkURL = item.diskFileURL {
-                previewURL = linkURL
+                self.previewURL = linkURL
             } else if vault.launchScenario != nil {
                 vault.modalLane = .pdf
             }
@@ -286,7 +286,7 @@ extension DownloadsView {
 
     private func delete(_ item: DownloadItem) {
         if let linkURL = item.diskFileURL { try? FileManager.default.removeItem(at: linkURL) }
-        vault.savedDownloads.removeAll { $0.id == item.id }
+        self.vault.savedDownloads.removeAll { $0.id == item.id }
         vault.flushSnapshot()
         if openSwipe == item.id { openSwipe = nil }
         deleting = nil

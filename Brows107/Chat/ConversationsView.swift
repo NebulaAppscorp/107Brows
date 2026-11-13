@@ -1,7 +1,7 @@
 //
 //  ConversationsView.swift
 //  Brows107
-//
+//  
 //  Created by Aleksandra Savchuk on 07/10/26.
 //
 
@@ -57,7 +57,7 @@ struct ConversationsView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, -1.8)
             }
-            // background fill
+            // background fill 
             .background(ChatsColors.canvasView.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) {
                 HStack(spacing: 8) {
@@ -108,7 +108,8 @@ struct ConversationsView: View {
         .presentationDetents([.large])
         .presentationBackground(ChatsColors.canvasView)
     }
-}
+} 
+
 
 // MARK: - Actions
 extension ConversationsView {
@@ -155,13 +156,14 @@ extension ConversationsView {
     private func delete(_ chat: Conversation) {
         if vault.activeThreadKey == chat.id { vault.startFreshThread() }
         withAnimation(.spring(duration: 0.28)) {
-            vault.aiThreads.removeAll { $0.id == chat.id }
+            self.vault.aiThreads.removeAll { $0.id == chat.id }
         }
         vault.flushSnapshot()
     }
 }
 
 enum ChatsColors {
+    // current canvas view
     static let canvasView = Color(
         uiColor: UIColor {
             $0.userInterfaceStyle == .dark
@@ -197,9 +199,9 @@ extension ModelPickerView {
         Button {
             if headingText == "Standard" {
                 vault.assistantModel = headingText
-                vault.modalLane = nil
+                self.vault.modalLane = nil
             } else {
-                vault.assistantModel = headingText
+                self.vault.assistantModel = headingText
                 vault.modalLane = nil
             }
         } label: {
@@ -207,7 +209,7 @@ extension ModelPickerView {
                 Image(systemName: vault.assistantModel == headingText ? "checkmark" : "")
                     .font(.ui(17, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 24)
+                    .frame(width: 24)    
                 HStack(spacing: 8) {
                     Image(systemName: icon)
                         .font(.ui(17))

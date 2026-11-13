@@ -17,17 +17,20 @@ import StoreKit
     var entitlementActive = false
     var pickedPlanID = "weekly"
 
+    // keeps apphud product by sku
     private var apphudProductBySKU: [String: ApphudProduct] = [:]
     private var storeKitFallback = false
     private var loadedPaywall: ApphudPaywall?
 
     var chosenProduct: Product? { storeProduct(forPlanID: pickedPlanID) }
 
+
     // keeps product
     func storeProduct(forPlanID planID: String) -> Product? {
         let normalizedPlan = planID.lowercased()
         if let periodMatch = storeKitOffers.first(where: { product in
             guard let period = product.subscription?.subscriptionPeriod else { return false }
+            // map the state to what we show
             switch normalizedPlan {
             case "yearly": return period.unit == .year
             case "weekly": return period.unit == .week || (period.unit == .day && period.value == 7)
@@ -41,24 +44,27 @@ import StoreKit
 
     // Loads offers from Apphud, falling back to the StoreKit file.
     func fetchProducts() async {
-        guard !busy else { return }
+        guard !busy else { return }    
         busy = true
         defer { busy = false }
-        checkoutNotice = nil
+        self.checkoutNotice = nil
         storeKitOffers = []
-        apphudProductBySKU = [:]
+        self.apphudProductBySKU = [:]
         storeKitFallback = false
         loadedPaywall = nil
 
         let placementKey = AppMetadata.apphudPaywallPlacementID
         PaywallLog.fetchStarted(placementID: placementKey)
+        // suspends here
         await ApphudBootstrap.awaitApphudBootstrapped()
         PaywallLog.apphudBootstrapped(
             started: ApphudBootstrap.apphudUserID() != "",
             userRef: ApphudBootstrap.apphudUserID()
         )
+        // suspends here
         await loadFromApphud()
         if storeKitOffers.isEmpty, ApphudBootstrap.isRunningAlternateBundle || storeKitFallbackEligible {
+            // suspends here 
             await loadFromStoreKitConfiguration()
         }
         if storeKitOffers.isEmpty {
@@ -67,14 +73,18 @@ import StoreKit
         }
     }
 
+
     private var storeKitFallbackEligible: Bool {
         #if DEBUG
             true
         #else
             ApphudBootstrap.isRunningAlternateBundle
         #endif
-    }
+    } 
+}
 
+// MARK: - PurchaseStore helpers
+extension PurchaseStore {
     // loads from apphud
     private func loadFromApphud() async {
         let placementKey = AppMetadata.apphudPaywallPlacementID
@@ -86,32 +96,46 @@ import StoreKit
             PaywallLog.placementUnavailable(requested: placementKey, available: placementBatch.map(\.identifier))
             return
         }
+        // resolved paywall
         let resolvedPaywall = resolvedPlacement.paywall
+        // local apphud skulist
         let apphudSKUList = resolvedPaywall?.products.map(\.productId) ?? []
         PaywallLog.placementResolved(
             placementID: placementKey,
             paywallID: resolvedPaywall?.identifier,
             productIDs: apphudSKUList
         )
+        // resolved paywall must exist here
         guard let resolvedPaywall, !resolvedPaywall.products.isEmpty else { return }
         self.loadedPaywall = resolvedPaywall
         Apphud.paywallShown(resolvedPaywall)
 
         var storeKitBatch: [Product] = []
         var apphudSKUMap: [String: ApphudProduct] = [:]
+        // Go through each apphud product
         for apphudProduct in resolvedPaywall.products {
             apphudSKUMap[apphudProduct.productId] = apphudProduct
-            if let storeProduct = try? await apphudProduct.product() {
-                storeKitBatch.append(storeProduct)
+            do {
+                if let storeProduct = try await apphudProduct.product() {
+                    storeKitBatch.append(storeProduct)
+                }
+            } catch {
+                PaywallLog.emit(.warning, "storekit product lookup failed: \(error.localizedDescription)")
             }
         }
         let missingSKUList = resolvedPaywall.products.map(\.productId).filter { sku in
             !storeKitBatch.contains(where: { $0.id == sku })
         }
-        if !missingSKUList.isEmpty,
-            let batch = try? await Product.products(for: missingSKUList), !batch.isEmpty
-        {
-            storeKitBatch.append(contentsOf: batch)
+        var fallbackBatch: [Product] = []
+        if !missingSKUList.isEmpty {
+            do {
+                fallbackBatch = try await Product.products(for: missingSKUList)
+            } catch {
+                PaywallLog.emit(.warning, "storekit fallback fetch failed: \(error.localizedDescription)")
+            }
+        }
+        if !fallbackBatch.isEmpty {
+            storeKitBatch.append(contentsOf: fallbackBatch)
             storeKitFallback = true
         }
         apphudProductBySKU = apphudSKUMap
@@ -136,7 +160,7 @@ import StoreKit
         guard !productSKUList.isEmpty else { return }
         do {
             storeKitOffers = try await Product.products(for: productSKUList)
-            storeKitFallback = true
+            self.storeKitFallback = true
             PaywallLog.storeKitLoaded(
                 source: "storekit-config",
                 offers: storeKitOffers.map { (id: $0.id, price: $0.displayPrice) }
@@ -147,8 +171,9 @@ import StoreKit
         }
     }
 
-    // Starts the purchase for the picked plan.
+    // Starts the purchase for the picked plan. 
     func commitPurchase() async {
+        // skip when the input is unusable
         guard !busy else { return }
         guard let chosenProduct else {
             checkoutNotice = "Plans are not available right now. Please try again later."
@@ -158,6 +183,7 @@ import StoreKit
         defer { busy = false }
         if let apphudProduct = apphudProductBySKU[chosenProduct.id], !storeKitFallback {
             PaywallLog.purchaseStarted(productID: chosenProduct.id, viaApphud: true)
+            // suspends here until the result is back
             let apphudOutcome = await Apphud.purchase(apphudProduct)
             if apphudOutcome.success {
                 entitlementActive = await ProEntitlement.isSubscribed()
@@ -169,9 +195,10 @@ import StoreKit
             }
             return
         }
-        PaywallLog.purchaseStarted(productID: chosenProduct.id, viaApphud: false)
+        PaywallLog.purchaseStarted(productID: chosenProduct.id, viaApphud: false)    
         do {
             switch try await chosenProduct.purchase() {
+            // When success
             case .success(let verificationPayload):
                 if case .verified(let transaction) = verificationPayload {
                     await transaction.finish()
@@ -180,7 +207,8 @@ import StoreKit
                 } else {
                     checkoutNotice = "The purchase could not be verified."
                     PaywallLog.purchaseOutcome(success: false, detail: "storekit unverified")
-                }
+                } 
+            // When pending
             case .pending:
                 checkoutNotice = "Your purchase is pending approval."
                 PaywallLog.emit(.info, "purchase pending")
@@ -192,7 +220,7 @@ import StoreKit
         } catch {
             self.checkoutNotice = "The purchase could not be completed. Please try again."
             PaywallLog.purchaseOutcome(success: false, detail: error.localizedDescription)
-        }
+        } 
     }
 
     // Restore purchases button.
@@ -200,7 +228,8 @@ import StoreKit
         guard !busy else { return }
         busy = true
         defer { busy = false }
-        do {
+        do { 
+            // Wait for it before moving on
             try await AppStore.sync()
             _ = await Apphud.restorePurchases()
             let isActive = await ProEntitlement.isSubscribed()

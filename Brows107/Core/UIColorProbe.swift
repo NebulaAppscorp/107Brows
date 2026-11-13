@@ -7,7 +7,7 @@
 
 import UIKit
 
-enum UIColorProbe {
+enum UIColorProbe { 
     // Parses "rgb(r, g, b)" from the page.
     static func fromCSSRGB(_ cssRGB: String) -> UIColor? {
         let numbers = cssRGB.split(whereSeparator: { !$0.isNumber && $0 != "." }).compactMap { Double($0) }
@@ -20,7 +20,7 @@ enum UIColorProbe {
     // Used to pick light or dark status bar content over a page.
     static func isLightBackground(_ color: UIColor) -> Bool {
         var redChannel: CGFloat = 0, greenChannel: CGFloat = 0, blueChannel: CGFloat = 0, alphaChannel: CGFloat = 0
-        guard color.getRed(&redChannel, green: &greenChannel, blue: &blueChannel, alpha: &alphaChannel) else { return false }
+        guard color.getRed(&redChannel, green: &greenChannel, blue: &blueChannel, alpha: &alphaChannel) else { return false } 
         return (0.299 * redChannel + 0.587 * greenChannel + 0.114 * blueChannel) > 0.6
     }
 }

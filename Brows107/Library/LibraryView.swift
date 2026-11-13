@@ -24,7 +24,7 @@ struct DestructiveMenuLabel: View {
 }
 
 enum TabsScreenLayout {
-    /// Tabs layout: nav bar at y=62, controls inset 8, grid from y=136, bottom bar at y=780 on an 874 pt screen.
+    /// Tabs layout: nav bar at y=62, controls inset 8, grid from y=136, bottom bar at y=780 on an 874 pt screen. 
     static let navBarTop: CGFloat = 62
     static let navControlTop: CGFloat = 8
     static let navControlSize: CGFloat = 46
@@ -136,7 +136,7 @@ struct TabsView: View {
                 Image(systemName: "ellipsis")
                     .font(.ui(19, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: TabsScreenLayout.navControlSize, height: TabsScreenLayout.navControlSize)
+                    .frame(width: TabsScreenLayout.navControlSize, height: TabsScreenLayout.navControlSize)    
                     .browsGlassCircle()
             }
             .buttonStyle(.plain)
@@ -161,7 +161,7 @@ struct TabsView: View {
     private var tabsBottomBar: some View {
         HStack(spacing: 0) {
             Button {
-                vault.spawnTab()
+                self.vault.spawnTab()
                 dismissSheet()
             } label: {
                 Image(systemName: "plus")
@@ -199,6 +199,7 @@ struct TabsView: View {
         .padding(.horizontal, 12)
     }
 
+
     // tabs privacy segment section
     private var tabsPrivacySegment: some View {
         HStack(spacing: 0) {
@@ -217,7 +218,7 @@ struct TabsView: View {
                 .background {
                     if !vault.incognito {
                         Capsule().fill(Palette.rgb(0x767680).opacity(0.12))
-                    }
+                    } 
                 }
         }
         .font(.ui(14, weight: .medium))
@@ -235,7 +236,7 @@ extension TabsView {
         VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .topTrailing) {
                 Button {
-                    vault.activeTabKey = browserTab.id
+                    self.vault.activeTabKey = browserTab.id
                     vault.chromePane = 0
                     dismissSheet()
                 } label: {
@@ -271,14 +272,16 @@ extension TabsView {
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay { Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5) }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plain) 
         .padding(TabsScreenLayout.tabCloseInset)
         .accessibilityLabel("Close tab")
     }
 }
 
+
 /// Thumbnail with a title and a close button.
 struct TabPreviewCard: View {
+    // current browser tab
     let browserTab: BrowserTab
     let index: Int
     let gradients: [[Color]]
@@ -325,6 +328,7 @@ struct TabPreviewCard: View {
         }
     }
 }
+
 
 struct TabHostIcon: View {
     let linkURL: URL?
@@ -462,7 +466,7 @@ struct LibraryView: View {
                                     }.padding(.horizontal, 16)
                                 }
                             }
-                        }
+                        } 
                     }
                     .padding(.top, 22)
                     .padding(.bottom, 20)
@@ -491,7 +495,7 @@ struct LibraryView: View {
         } message: {
             Text("This can’t be undone.")
         }
-        // sheet for the current route
+        // sheet for the current route  
         .sheet(item: $editing) { shelfEntry in
             EditBookmarkView(bookmarkEntry: shelfEntry)
                 .presentationDetents([.large])
@@ -513,7 +517,7 @@ struct LibraryView: View {
                 ).browsGlassCircle()
             }.buttonStyle(.plain).accessibilityLabel("Close library")
             Spacer(minLength: 0)
-            HStack(spacing: 0) {
+            HStack(spacing: 0) { 
                 categoryButton("History", value: 0)
                 categoryButton("Bookmarks", value: 1)
             }
@@ -523,13 +527,13 @@ struct LibraryView: View {
                 if category == 0 {
                     Button(role: .destructive) {
                         confirmClear = true
-                    } label: {
+                    } label: { 
                         DestructiveMenuLabel(headingText: "Clear history")
                     }
                     .tint(.red)
                 } else {
                     Button(role: .destructive) {
-                        confirmClearBookmarks = true
+                        self.confirmClearBookmarks = true
                     } label: {
                         DestructiveMenuLabel(headingText: "Delete all bookmarks")
                     }
@@ -550,7 +554,7 @@ struct LibraryView: View {
     }
 }
 
-// MARK: Helpers
+// MARK: Helpers 
 extension LibraryView {
     // category button
     private func categoryButton(_ headingText: String, value slot: Int) -> some View {
@@ -584,6 +588,7 @@ extension LibraryView {
         }
         .padding(.horizontal, 14).frame(height: 48).browsGlassCapsule()
     }
+
 
     // folder back row
     private func folderBackRow(_ name: String) -> some View {

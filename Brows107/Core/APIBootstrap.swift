@@ -33,6 +33,7 @@ enum APIBootstrap {
         return (try? vaultProbe.verifyVaultFields()) != nil ? trimmed : "1"
     }
 
+
     // Keeps the API user id aligned with the Apphud one.
     static func syncApphudIdentity() {
         refreshUserIDIfNeeded()
@@ -40,7 +41,7 @@ enum APIBootstrap {
 
     // Refreshes user id if needed
     static func refreshUserIDIfNeeded() {
-        guard var vaultDraft = try? APIKeyVault.readFromKeychain() else { return }
+        guard var vaultDraft = try? APIKeyVault.readFromKeychain() else { return }    
         let userRef = sanitizedUserID(resolveInstallUserID())
         let needsUserSync = vaultDraft.remoteUserID != userRef
         let pinnedVault = vaultDraft.pinningShippingAppID()
@@ -52,7 +53,7 @@ enum APIBootstrap {
     }
 
     // Falls back to a per-install id when Apphud has none yet.
-    private static func resolveInstallUserID() -> String {
+    private static func resolveInstallUserID() -> String { 
         if let stored = UserDefaults.standard.string(forKey: "apphudUserID") {
             let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty { return trimmed }

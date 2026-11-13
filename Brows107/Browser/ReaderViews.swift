@@ -59,7 +59,7 @@ struct ReaderChromeView: View {
                             )
                         )
                         .frame(height: 188)
-                        .padding(.top, 22)
+                        .padding(.top, 22) 
                     Text(
                         "Good coffee is mostly about four things: water, ratio, grind and time. Get those right and almost any bean will taste better than it did yesterday."
                     )
@@ -114,6 +114,7 @@ struct ReaderChromeView: View {
         }
         .background(Palette.readerChrome.ignoresSafeArea())
     }
+
 
     // reader bullet
     private func readerBullet(_ draftText: String) -> some View {
@@ -172,7 +173,7 @@ struct SampleArticleView: View {
                             .fill(Palette.brandWash)
                             .frame(width: 22, height: 22)
                         Text("Maria Lopez  ·  Aug 12, 2026  ·  6 min read")
-                            .font(.ui(12))
+                            .font(.ui(12))  
                             .foregroundStyle(Palette.mutedLabel)
                     }
                     .padding(.top, 12)
@@ -202,7 +203,7 @@ struct SampleArticleView: View {
                         "The ideal range is between 195° and 205° F. Above that the coffee turns bitter, below it the cup tastes thin and sour.",
                         size: 17, color: Palette.mutedLabel
                     )
-                    .browsExactLineHeight(22)
+                    .browsExactLineHeight(22)  
                     .padding(.top, 10)
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -263,7 +264,7 @@ extension SampleArticleView {
     private func bullet(_ draftText: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Circle().fill(Palette.brandInk).frame(width: 6, height: 6).padding(.top, 8)
-            highlightedText(draftText, size: 17, color: Palette.mutedLabel).browsExactLineHeight(22)
+            highlightedText(draftText, size: 17, color: Palette.mutedLabel).browsExactLineHeight(22)    
         }
     }
 
@@ -305,5 +306,5 @@ extension SampleArticleView {
             searchStart = range.upperBound
         }
         return attributed
-    }
+    } 
 }

@@ -9,6 +9,7 @@ import SwiftUI
 import PDFKit
 import UniformTypeIdentifiers
 
+
 private enum DocumentSheet: String, Identifiable {
     case ai
     case pdfHistory
@@ -30,8 +31,10 @@ struct DocumentView: View {
     @State private var jumpDraft = ""
     @State private var presentedSheet: DocumentSheet?
 
+
     private var showsChrome: Bool { loadedPdf != nil || loadFailed }
     private var navCaption: String {
+        // optional loaded pdf, may be missing
         if let loadedPdf {
             return loadedPdf.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String ?? documentTitle
         }
@@ -54,9 +57,9 @@ struct DocumentView: View {
                         ).padding(.top, vault.launchScenario != nil && vault.launchScenario != "pdf-error" ? 11 : 0)
                     }
                 } else {
-                    ContentUnavailableView {
+                    ContentUnavailableView { 
                         Label("Open a PDF", systemImage: "doc.richtext")
-                    } description: {
+                    } description: { 
                         Text("Choose a document to read or ask about.")
                     } actions: {
                         Button("Choose file") { filePickerPresented = true }.browsGlassProminentButtonStyle()
@@ -90,11 +93,15 @@ struct DocumentView: View {
                 case .success(let linkURL):
                     documentTitle = linkURL.lastPathComponent
                     Task {
+                        // async hop, keep the work above it cheap
                         let openedPdfPayload = await Task.detached(priority: .userInitiated) {
+                            // Work out the scoped resource access
                             let scopedResourceAccess = linkURL.startAccessingSecurityScopedResource()
                             defer { if scopedResourceAccess { linkURL.stopAccessingSecurityScopedResource() } }
+                            // payload bytes must exist here
                             guard let payloadBytes = try? Data(contentsOf: linkURL) else { return PDFDocumentPayload(nil) }
                             guard let pdfDocument = PDFDocument(data: payloadBytes) else { return PDFDocumentPayload(nil) }
+                            // local archive directory
                             let archiveDirectory = URL.applicationSupportDirectory.appending(
                                 path: "107Brows/downloads/" + UUID().uuidString, directoryHint: .isDirectory)
                             let originalName = linkURL.lastPathComponent
@@ -102,12 +109,13 @@ struct DocumentView: View {
                             let archiveLocation = archiveDirectory.appending(path: archiveName)
                             do {
                                 try FileManager.default.createDirectory(at: archiveDirectory, withIntermediateDirectories: true)
-                                try payloadBytes.write(to: archiveLocation, options: .atomic)
-                                return PDFDocumentPayload(pdfDocument, archiveURL: archiveLocation, byteCount: payloadBytes.count)
+                                try payloadBytes.write(to: archiveLocation, options: .atomic) 
+                                return PDFDocumentPayload(pdfDocument, archiveURL: archiveLocation, byteCount: payloadBytes.count) 
                             } catch {
                                 return PDFDocumentPayload(pdfDocument, archiveError: error.localizedDescription)
-                            }
+                            } 
                         }.value
+                        // No slot, no point continuing
                         guard let slot = openedPdfPayload.document else {
                             loadedPdf = nil
                             loadFailed = true
@@ -116,12 +124,15 @@ struct DocumentView: View {
                         loadFailed = false
                         loadedPdf = slot
                         visiblePageIndex = 1
+                        // handle heading text if it is there
                         if let headingText = slot.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String,
                             !headingText.isEmpty
                         {
-                            documentTitle = headingText
+                            self.documentTitle = headingText
                         }
+                        // optional archive location, may be missing
                         if let archiveLocation = openedPdfPayload.archiveURL {
+                            // work out the size label
                             let sizeLabel = ByteCountFormatter.string(
                                 fromByteCount: Int64(openedPdfPayload.byteCount), countStyle: .file)
                             vault.savedDownloads.removeAll { $0.diskFileURL == archiveLocation }
@@ -129,11 +140,12 @@ struct DocumentView: View {
                                 DownloadItem(
                                     assetLabel: archiveLocation.lastPathComponent, diskFileURL: archiveLocation,
                                     byteSizeLabel: sizeLabel), at: 0)
-                            vault.flushSnapshot()
+                            self.vault.flushSnapshot()
                         } else if let archiveFailure = openedPdfPayload.archiveError {
                             vault.bannerText = "PDF opened, but it couldn’t be saved to Downloads: \(archiveFailure)"
                         }
                     }
+                // when failure
                 case .failure:
                     loadFailed = true
                 }
@@ -150,6 +162,7 @@ struct DocumentView: View {
             // sheet content is built lazily
             .sheet(item: $presentedSheet) { sheet in
                 switch sheet {
+                // ai case
                 case .ai:
                     DocumentAIView(
                         fullDocumentText: loadedPdf?.string ?? "",
@@ -176,9 +189,10 @@ struct DocumentView: View {
     /// Red doc badge, copy, Try again; bottom bar dimmed.
     private var pdfErrorState: some View {
         VStack(spacing: 0) {
-            ZStack {
+            ZStack {  
                 Circle()
                     .fill(Palette.rgb(0xFF383C))
+                    // Size matches the mock
                     .frame(width: 64, height: 64)
                 Image(systemName: "doc.fill")
                     .font(.ui(28))
@@ -200,14 +214,18 @@ struct DocumentView: View {
             Button("Try again") { filePickerPresented = true }
                 .font(.ui(17, weight: .semibold))
                 .foregroundStyle(.white)
+                // size matches the mock
                 .frame(width: 180, height: 48)
-                // background fill
+                // background fill 
                 .background(Palette.brandInk, in: Capsule())
         }
+        // fixed size from the design
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Spacing from the design
         .padding(.horizontal, 40)
         .accessibilityElement(children: .combine)
     }
+
 
     private let barCircle: CGFloat = 40
     private let barControl: CGFloat = 50
@@ -228,7 +246,9 @@ extension DocumentView {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
+                    // size matches the mock
                     .frame(maxWidth: .infinity)
+                    // size matches the mock
                     .frame(height: 48)
                     .contentShape(Capsule())
             }
@@ -246,6 +266,7 @@ extension DocumentView {
                 .browsGlassButtonStyle()
                 .buttonBorderShape(.circle)
                 .controlSize(.small)
+                // fixed size from the design
                 .frame(width: barControl, height: barControl)
                 // drawn on top of the content
                 .overlay(Circle().stroke(Color.primary.opacity(0.22), lineWidth: 1))
@@ -259,8 +280,8 @@ extension DocumentView {
                     // drawn on top of the content
                     .overlay(Circle().stroke(Color.primary.opacity(0.22), lineWidth: 1))
                     .accessibilityLabel("Share")
-                    .allowsHitTesting(false)
-            }
+                    .allowsHitTesting(false) 
+            }  
             Button {
                 openAI()
             } label: {
@@ -268,26 +289,33 @@ extension DocumentView {
                     .font(.ui(16, weight: .semibold))
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(.white)
+                    // size matches the mock
                     .frame(width: barCircle, height: barCircle)
                     .contentShape(Circle())
             }
             .browsGlassProminentButtonStyle()
             .buttonBorderShape(.circle)
             .controlSize(.small)
+            // Size matches the mock
             .frame(width: barControl, height: barControl)
             .tint(Palette.brandInk)
             .accessibilityLabel("Ask PDF")
             .disabled(!interactive || vault.incognito)
         }
         .opacity(interactive ? 1 : 0.4)
+        // Breathing room
         .padding(.horizontal, 24)
+        // breathing room
         .padding(.top, 8)
-        .padding(.bottom, 8)
+        // breathing room
+        .padding(.bottom, 8)    
         // background goes behind everything
         .background(PDFColors.canvasView.ignoresSafeArea(edges: .bottom))
     }
 
+
     // Opens the document AI sheet unless the PDF is unreadable.
+    // TODO(Aleksandra): page jump alert is numeric only, no way to jump by bookmark yet
     private func openAI() {
         presentedSheet = .ai
     }
@@ -296,22 +324,26 @@ extension DocumentView {
         Image(systemName: "square.and.arrow.up")
             .font(.ui(17, weight: .semibold))
             .foregroundStyle(.primary)
+            // fixed size from the design
             .frame(width: barCircle, height: barCircle)
             .contentShape(Circle())
     }
 
     @ViewBuilder
     private func iconCircle(_ iconName: String, label: String, interactive: Bool, action: @escaping () -> Void) -> some View {
+        // Plain button, styling comes from the modifiers
         Button(action: action) {
             Image(systemName: iconName)
                 .font(.ui(17, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.primary) 
+                // fixed size from the design
                 .frame(width: barCircle, height: barCircle)
                 .contentShape(Circle())
         }
         .browsGlassButtonStyle()
         .buttonBorderShape(.circle)
         .controlSize(.small)
+        // Fixed size from the design
         .frame(width: barControl, height: barControl)
         .overlay(Circle().stroke(Color.primary.opacity(0.22), lineWidth: 1))
         .accessibilityLabel(label)
@@ -320,7 +352,7 @@ extension DocumentView {
     // fixture document
     private static func fixtureDocument() -> PDFDocument? {
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 362, height: 506))
-        // Style
+        // Style 
         func style(_ lineHeight: CGFloat, _ alignment: NSTextAlignment = .left) -> NSMutableParagraphStyle {
             let slot = NSMutableParagraphStyle()
             slot.minimumLineHeight = lineHeight
@@ -329,6 +361,7 @@ extension DocumentView {
             return slot
         }
         let faint = UIColor(red: 60 / 255, green: 60 / 255, blue: 67 / 255, alpha: 0.3)
+        // work out the soft
         let soft = UIColor(red: 60 / 255, green: 60 / 255, blue: 67 / 255, alpha: 0.6)
         let ruleStroke = UIColor(red: 214 / 255, green: 226 / 255, blue: 220 / 255, alpha: 1)
         let grid = UIColor(red: 191 / 255, green: 191 / 255, blue: 191 / 255, alpha: 1)
@@ -346,6 +379,7 @@ extension DocumentView {
                 ])
         }
         let payloadBytes = renderer.pdfData { context in
+            // one pass over the index items
             for index in 0..<48 {
                 context.beginPage()
                 draftText(
@@ -381,6 +415,7 @@ extension DocumentView {
                 table.lineWidth = 1
                 table.stroke()
                 grid.setFill()
+                // Go through each row
                 for row in 1...3 { UIRectFill(CGRect(x: 26, y: 267.67 + CGFloat(row) * 27 - 1, width: 310, height: 1)) }
                 let rowBatch = [
                     ["Method", "Ratio", "Time"], ["Pour-over", "1 : 16", "3–4 min"], ["French press", "1 : 15", "4 min"],
@@ -391,9 +426,9 @@ extension DocumentView {
                         draftText(
                             cell, CGRect(x: 36 + CGFloat(c) * 96.67, y: 273 + CGFloat(r) * 27, width: 96.67, height: 14),
                             size: 9.5, weight: r == 0 ? .semibold : .regular, color: r == 0 ? .black : soft, lineHeight: 14,
-                            alignment: c == 0 ? .left : .right, dy: 0.77)
+                            alignment: c == 0 ? .left : .right, dy: 0.77) 
                     }
-                }
+                } 
                 draftText(
                     "Where equipment cannot hold the stated range, the deviation shall be declared in the report together with the measured value.",
                     CGRect(x: 26, y: 388, width: 310, height: 30), size: 10, color: soft, lineHeight: 15, dy: -1.2)
@@ -408,7 +443,9 @@ extension DocumentView {
     }
 }
 
+
 private final class PDFDocumentPayload: @unchecked Sendable {
+    // document
     let document: PDFDocument?
     let archiveURL: URL?
     let byteCount: Int
@@ -424,6 +461,7 @@ private final class PDFDocumentPayload: @unchecked Sendable {
 
 /// PDFKit wrapper; keeps page position while sheets animate.
 struct NativePDFView: UIViewRepresentable {
+    // keeps pdf document
     let pdfDocument: PDFDocument
     // injected state
     @Binding var pageNumber: Int
@@ -466,9 +504,11 @@ struct NativePDFView: UIViewRepresentable {
             forName: .PDFViewPageChanged, object: hostName, queue: .main
         ) { [weak hostName] _ in
             MainActor.assumeIsolated {
+                // host name must exist here
                 guard let hostName, let pdfLeaf = hostName.currentPage, let document = hostName.document else { return }
                 guard !context.coordinator.freezesPagePosition else { return }
                 let index = document.index(for: pdfLeaf) + 1
+                // optional expected page, may be missing
                 if let expectedPage = context.coordinator.expectedPage {
                     guard index == expectedPage else { return }
                     context.coordinator.expectedPage = nil
@@ -478,10 +518,15 @@ struct NativePDFView: UIViewRepresentable {
         }
         return hostName
     }
+} 
+
+// MARK: - NativePDFView helpers
+extension NativePDFView {
     func updateUIView(_ hostName: PDFView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.freezesPagePosition = freezesPagePosition
         if hostName.document != pdfDocument { hostName.document = pdfDocument }
+        // handle pdf leaf if it is there
         if let pdfLeaf = pdfDocument.page(at: pageNumber - 1), hostName.currentPage != pdfLeaf {
             context.coordinator.expectedPage = pageNumber
             DispatchQueue.main.async { [weak hostName] in hostName?.go(to: pdfLeaf) }
@@ -489,6 +534,7 @@ struct NativePDFView: UIViewRepresentable {
     }
     // Dismantle ui view
     static func dismantleUIView(_ uiView: PDFView, coordinator: PDFScrollRelay) {
+        // Only when there is a observer
         if let observer = coordinator.observer { NotificationCenter.default.removeObserver(observer) }
         coordinator.observer = nil
     }
@@ -512,13 +558,13 @@ struct NativePDFView: UIViewRepresentable {
             shape.path = path.cgPath
             shape.fillColor = UIColor(red: 231 / 255, green: 239 / 255, blue: 235 / 255, alpha: 1).cgColor
         }
-    }
+    }  
     final class CornersProvider: NSObject, PDFPageOverlayViewProvider {
         func pdfView(_ hostName: PDFView, overlayViewFor page: PDFPage) -> UIView? {
             MainActor.assumeIsolated { RoundedCornersView() }
         }
     }
-    @MainActor final class PDFScrollRelay {
+    final class PDFScrollRelay {
         let corners = CornersProvider()
         var parent: NativePDFView
         var observer: NSObjectProtocol?
@@ -530,15 +576,18 @@ struct NativePDFView: UIViewRepresentable {
 
 /// Thumbnails sheet.
 struct PDFThumbnails: View {
+    // keeps pdf document
     let pdfDocument: PDFDocument
     @Binding var visiblePageIndex: Int
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
+                // one row per element
                 ForEach(0..<pdfDocument.pageCount, id: \.self) { index in
+                    // handle pdf leaf if it is there
                     if let pdfLeaf = pdfDocument.page(at: index) {
                         Button {
-                            visiblePageIndex = index + 1
+                            self.visiblePageIndex = index + 1
                         } label: {
                             VStack {
                                 Image(uiImage: pdfLeaf.thumbnail(of: CGSize(width: 100, height: 140), for: .mediaBox)).resizable()
@@ -556,9 +605,10 @@ struct PDFThumbnails: View {
 }
 
 private enum PDFColors {
+    // canvas view
     static let canvasView = Color(
         uiColor: UIColor {
             $0.userInterfaceStyle == .dark
-                ? .secondarySystemBackground : UIColor(red: 231 / 255, green: 239 / 255, blue: 235 / 255, alpha: 1)
+                ? .secondarySystemBackground : UIColor(red: 231 / 255, green: 239 / 255, blue: 235 / 255, alpha: 1)    
         })
 }

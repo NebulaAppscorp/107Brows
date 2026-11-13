@@ -13,7 +13,7 @@ import ImageIO
 
 enum PhotoSearchJPEG {
     // Strips markdown and link noise from the model answer.
-    static func cleanVisualAnswer(_ answer: String) -> String {
+    static func cleanVisualAnswer(_ answer: String) -> String {  
         let guidancePhrases = [
             "use this service", "use the service", "try this service", "try this website", "use another website",
             "upload the photo", "upload this photo", "search manually", "search it yourself", "google lens", "tineye", "lenso.ai",
@@ -78,6 +78,7 @@ enum PhotoSearchJPEG {
             guard !guidanceTitles.contains(where: title.contains), !guidanceAddresses.contains(where: address.contains) else {
                 return false
             }
+            // nothing to do without this
             guard let categoryTerms else { return true }
             return categoryTerms.contains(where: title.contains) || categoryTerms.contains(where: address.contains)
         }
@@ -105,6 +106,7 @@ enum PhotoSearchJPEG {
         request.setValue("107Brows/1.0", forHTTPHeaderField: "User-Agent")
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
+            // guard first, work after
             guard let httpResponse = response as? HTTPURLResponse else { return page }
             if [404, 410].contains(httpResponse.statusCode) { return nil }
             guard (200..<400).contains(httpResponse.statusCode), let finalURL = response.url,
@@ -118,12 +120,13 @@ enum PhotoSearchJPEG {
         }
     }
 
-    // normalize text
+    // normalize text 
     private static func normalizeText(_ value: String) -> String {
         value.folding(options: .diacriticInsensitive, locale: .current).lowercased()
     }
 
-    // decodes downsampled
+
+    // decodes downsampled  
     static func decodeDownsampled(payloadBytes: Data, maxPixelSize: CGFloat) -> UIImage? {
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(payloadBytes as CFData, sourceOptions) else { return nil }
@@ -253,7 +256,7 @@ enum PhotoSearchJPEG {
         for sourceEntry in assistantPayload.savedSources {
             add(sourceEntry.pageTitle, sourceEntry.pageURL, requireDeepPath: true)
         }
-        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) { 
             let range = NSRange(draftText.startIndex..., in: draftText)
             detector.enumerateMatches(in: draftText, options: [], range: range) { match, _, _ in
                 guard let linkURL = match?.url else { return }

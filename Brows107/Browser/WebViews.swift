@@ -2,7 +2,7 @@
 //  WebViews.swift
 //  Brows107
 //
-//  Created by Aleksandra Savchuk on 08/11/26.
+//  Created by Aleksandra Savchuk on 08/11/26. 
 //
 
 import SwiftUI
@@ -26,12 +26,13 @@ struct WebPageView: UIViewRepresentable {
     }
 }
 
-/// SwiftUI keeps the representable inside the safe area. The web view is stretched to the window and ancestors are unclipped so the page covers the status bar and the home indicator. The page’s own background fills that area, so there is no empty band.
+/// SwiftUI keeps the representable inside the safe area. The web view is stretched to the window and ancestors are unclipped so the page covers the status bar and the home indicator. The page’s own background fills that area, so there is no empty band.  
 final class PageBleedBox: UIView {
     weak var webSessionRef: WebSession?
     private weak var webLane: WKWebView?
     private var observed: WKWebView?
     private var didUnclip = false
+
 
     // attach
     func attach(_ hostName: WKWebView) {
@@ -46,7 +47,7 @@ final class PageBleedBox: UIView {
         if observed !== hostName {
             observed?.removeObserver(self, forKeyPath: "underPageBackgroundColor")
             hostName.addObserver(self, forKeyPath: "underPageBackgroundColor", options: [.new], context: nil)
-            observed = hostName
+            self.observed = hostName
         }
         clipsToBounds = false
         if replaced { setNeedsLayout() }
@@ -56,7 +57,7 @@ final class PageBleedBox: UIView {
         forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?
     ) {
         setNeedsLayout()
-    }
+    } 
 
     deinit {
         observed?.removeObserver(self, forKeyPath: "underPageBackgroundColor")
@@ -67,7 +68,7 @@ final class PageBleedBox: UIView {
         backgroundColor = .clear
         clipsToBounds = false
         guard let webLane, let hostWindow = window else { return }
-        unclipToWindowIfNeeded(hostWindow)
+        unclipToWindowIfNeeded(hostWindow) 
         stretchWebLaneToWindow(webLane, hostWindow)
         clearWebLaneChrome(webLane)
         webSessionRef?.syncTopScrollInset(for: webLane)
@@ -76,7 +77,7 @@ final class PageBleedBox: UIView {
     // unclip to window if needed
     private func unclipToWindowIfNeeded(_ hostWindow: UIWindow) {
         guard !didUnclip else { return }
-        didUnclip = true
+        self.didUnclip = true
         var ancestor: UIView? = self
         while let walkView = ancestor, walkView !== hostWindow {
             walkView.clipsToBounds = false
@@ -159,6 +160,7 @@ final class BrowsWebView: WKWebView {
         return super.canPerformAction(action, withSender: sender)
     }
 
+
     // filtering context actions
     private func filteringContextActions(from elements: [UIMenuElement]) -> [UIMenuElement] {
         elements.compactMap { element in
@@ -181,12 +183,13 @@ struct PageStatusBar: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> Controller { Controller() }
 
+
     func updateUIViewController(_ controller: Controller, context: Context) {
         controller.lightBackground = lightBackground
         controller.refresh()
     }
 
-    final class Controller: UIViewController {
+    final class Controller: UIViewController {  
         var lightBackground = false
         override var preferredStatusBarStyle: UIStatusBarStyle { lightBackground ? .darkContent : .lightContent }
         override func didMove(toParent parent: UIViewController?) { refresh() }
@@ -196,5 +199,5 @@ struct PageStatusBar: UIViewControllerRepresentable {
             parent?.setNeedsStatusBarAppearanceUpdate()
             navigationController?.setNeedsStatusBarAppearanceUpdate()
         }
-    }
+    }  
 }

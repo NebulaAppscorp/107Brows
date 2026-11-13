@@ -76,6 +76,7 @@ struct VisualMatch: Identifiable {
 
 enum VisualSearchState: String { case results, empty, unreadable, offline, loading }
 
+
 struct PhotoPageTarget: Identifiable {
     let id = UUID()
     let url: URL
@@ -94,8 +95,10 @@ struct InAppPhotoPage: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
+
 /// Grid of pages found for the photo.
 struct VisualMatchesView: View {
+    // keeps query snapshot
     var querySnapshot: UIImage?
     var searchPhase: VisualSearchState = .results
     /// Nil keeps the review fixture grid. A real search passes the pages the API returned.
@@ -118,6 +121,7 @@ struct VisualMatchesView: View {
         default: return visualCatalog
         }
     }
+    // keeps shopping hosts
     private static let shoppingHosts = [
         "amazon.", "ebay.", "etsy.", "walmart.", "aliexpress.", "alibaba.", "rei.", "target.", "bestbuy.",
         "store.", "shop.", "shopify.", "temu.", "ozon.", "wildberries.", "market.yandex.", "ikea.", "wayfair.", "newegg.",
@@ -189,14 +193,14 @@ struct VisualMatchesView: View {
                     .padding(.top, 12)
                 }
                 if masonryVisible {
-                    ScrollView(.horizontal) {
+                    ScrollView(.horizontal) { 
                         HStack(spacing: 8) {
                             ForEach(["All", "Shopping", "Similar photos", "Pages"], id: \.self) { slot in
                                 Button {
-                                    categoryFilter = slot
+                                    self.categoryFilter = slot
                                 } label: {
                                     Text(slot).font(.ui(13, weight: .semibold)).tracking(-0.08).padding(.horizontal, 14)
-                                        .frame(height: 34)
+                                        .frame(height: 34)  
                                         .foregroundStyle(categoryFilter == slot ? Color.white : Color(uiColor: .secondaryLabel))
                                 }.buttonStyle(.plain).background(
                                     categoryFilter == slot
@@ -302,7 +306,7 @@ struct VisualMatchesView: View {
             .padding(.top, 8)
             .padding(.horizontal, unreadable ? 8 : 0)
             if let answer = answerText?.trimmingCharacters(in: .whitespacesAndNewlines), !answer.isEmpty {
-                Text(answer)
+                Text(answer) 
                     .font(.ui(15))
                     .lineLimit(5)
                     .multilineTextAlignment(.center)
@@ -344,9 +348,9 @@ struct VisualMatchesView: View {
     // the loading grid block
     private var loadingGrid: some View {
         let masonryHeights: [CGFloat] = [188, 152, 168, 168, 188, 152]
-        let leftHeights = masonryHeights.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element)
+        let leftHeights = masonryHeights.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element)    
         let rightLaneHeights = masonryHeights.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element)
-        let fill = Color(uiColor: .secondarySystemFill)
+        let fill = Color(uiColor: .secondarySystemFill) 
         return HStack(alignment: .top, spacing: 12) {
             LazyVStack(spacing: 16) {
                 ForEach(Array(leftHeights.enumerated()), id: \.offset) { _, laneHeight in
@@ -358,7 +362,7 @@ struct VisualMatchesView: View {
                 ForEach(Array(rightLaneHeights.enumerated()), id: \.offset) { _, laneHeight in
                     skeletonCard(imageHeight: laneHeight, fill: fill)
                 }
-            }
+            } 
             .frame(maxWidth: .infinity)
         }
     }
@@ -382,6 +386,7 @@ extension VisualMatchesView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
 
     // card
     private func card(_ match: VisualMatch) -> some View {
@@ -430,10 +435,10 @@ extension VisualMatchesView {
             return
         }
         guard let destination = URL(string: openURL) else {
-            vault.bannerText = "This link couldn’t be opened."
+            self.vault.bannerText = "This link couldn’t be opened."
             return
         }
-        presentedPage = PhotoPageTarget(url: destination)
+        self.presentedPage = PhotoPageTarget(url: destination)
     }
 
     // match artwork

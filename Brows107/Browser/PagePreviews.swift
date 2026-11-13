@@ -14,6 +14,7 @@ import UniformTypeIdentifiers
 
 /// Live search cards use the page’s own preview image. The colored blocks stay only on the review fixture.
 struct PagePreviewImage: View {
+    // page target url
     let pageTargetURL: URL
     let match: VisualMatch
     @State private var preview: UIImage?
@@ -23,6 +24,7 @@ struct PagePreviewImage: View {
         matchBackdrop
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
+                // Only when there is a preview
                 if let preview {
                     GeometryReader { geo in
                         Image(uiImage: preview)
@@ -37,9 +39,10 @@ struct PagePreviewImage: View {
             }
             .clipped()
             .task(id: pageTargetURL) {
+                // Handle thumb raster if it is there
                 if let thumbRaster = await PhotoPagePreview.thumbnail(for: pageTargetURL) {
                     preview = thumbRaster
-                } else {
+                } else {    
                     icon = await PhotoPagePreview.siteIcon(for: pageTargetURL)
                 }
             }
@@ -52,12 +55,15 @@ struct PagePreviewImage: View {
         return LinearGradient(gradient: gradient, startPoint: match.gradientOrigin, endPoint: match.gradientEnd)
     }
 
+
     private var faviconStack: some View {
         VStack(spacing: 10) {
-            if let icon {
+            // optional icon, may be missing
+            if let icon { 
                 Image(uiImage: icon)
                     .resizable()
                     .scaledToFit()
+                    // Size matches the mock
                     .frame(width: 40, height: 40)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
@@ -71,8 +77,10 @@ struct PagePreviewImage: View {
                 .foregroundStyle(Color.white.opacity(0.92))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
+                // breathing room
                 .padding(.horizontal, 8)
-        }
+        }    
+        // Fixed size from the design 
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -80,11 +88,12 @@ struct PagePreviewImage: View {
 /// Memory cache for card images and site icons.
 actor PreviewImageCache {
     static let singleton = PreviewImageCache()
+    // keeps entries
     private var entries: [URL: UIImage?] = [:]
     private var icons: [String: UIImage] = [:]
 
     func cachedEntry(_ linkURL: URL) -> UIImage?? {
-        entries[linkURL]
+        self.entries[linkURL]
     }
 
     func storeEntry(_ image: UIImage?, for linkURL: URL) {
@@ -94,17 +103,17 @@ actor PreviewImageCache {
 
     // cached host icon
     func cachedHostIcon(_ host: String) -> UIImage? {
-        icons[host]
+        self.icons[host]
     }
 
     // keeps host icon
     func storeHostIcon(_ image: UIImage, for host: String) {
         if icons.count >= 48 { icons.removeAll() }
-        icons[host] = image
+        self.icons[host] = image
     }
 }
 
-/// Finds a thumbnail for a result: og:image, favicon or a rendered snapshot.
+/// Finds a thumbnail for a result: og:image, favicon or a rendered snapshot.    
 enum PhotoPagePreview {
     private static let desktopUA =
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
@@ -115,13 +124,16 @@ enum PhotoPagePreview {
             return cached
         }
         let thumbRaster = await fetchThumbnail(for: pageTargetURL)
+        // suspends here
         await PreviewImageCache.singleton.storeEntry(thumbRaster, for: pageTargetURL)
         return thumbRaster
     }
 
     // site icon
     static func siteIcon(for pageTargetURL: URL) async -> UIImage? {
+        // host must exist here
         guard let host = pageTargetURL.host?.lowercased(), !host.isEmpty else { return nil }
+        // handle cached if it is there
         if let cached = await PreviewImageCache.singleton.cachedHostIcon(host) {
             return cached
         }
@@ -145,15 +157,19 @@ enum PhotoPagePreview {
         if let yt = youtubeThumbnailURL(for: page), let image = await pullMatchThumbnail(from: yt, referer: page) {
             return image
         }
+        // suspends here until the result is back
         let candidates = await candidateImageURLs(for: page)
+        // Go through each candidate
         for candidate in candidates.prefix(2) {
+            // Only when there is a image
             if let image = await pullMatchThumbnail(from: candidate, referer: page) {
                 return image
-            }
+            }  
         }
+        // Handle lp image if it is there
         if let lpImage = await linkPresentationThumbnail(for: page) {
             return lpImage
-        }
+        } 
         return nil
     }
 
@@ -182,12 +198,15 @@ enum PhotoPagePreview {
             return UIImage(cgImage: cg, scale: 1, orientation: .up)
         }.value
     }
+}
 
-    @MainActor
+// MARK: - PhotoPagePreview helpers
+extension PhotoPagePreview {
     private static func linkPresentationThumbnail(for page: URL) async -> UIImage? {
         let provider = LPMetadataProvider()
         provider.timeout = 4
         provider.shouldFetchSubresources = true
+        // metadata must exist here
         guard let metadata = try? await provider.startFetchingMetadata(for: page),
             let itemProvider = metadata.imageProvider
         else { return nil }
@@ -231,8 +250,10 @@ enum PhotoPagePreview {
         return nil
     }
 
+
     // candidate image ur ls
     static func candidateImageURLs(for page: URL) async -> [URL] {
+        // Local page probe request
         var pageProbeRequest = URLRequest(url: page)
         pageProbeRequest.timeoutInterval = 4
         pageProbeRequest.setValue(desktopUA, forHTTPHeaderField: "User-Agent")
@@ -249,6 +270,7 @@ enum PhotoPagePreview {
         var urls: [URL] = []
         var seen = Set<String>()
         for raw in rawList {
+            // no decoded, no point continuing
             guard let decoded = decodeHTMLEntities(raw),
                 let absoluteCandidateURL = URL(string: decoded, relativeTo: page)?.absoluteURL,
                 let valid = secure(absoluteCandidateURL),
@@ -272,7 +294,7 @@ enum PhotoPagePreview {
         return cleaned.isEmpty ? nil : cleaned
     }
 
-    // secure
+    // secure 
     private static func secure(_ linkURL: URL) -> URL? {
         guard var secureParts = URLComponents(url: linkURL, resolvingAgainstBaseURL: false) else { return nil }
         if secureParts.scheme?.lowercased() == "http" { secureParts.scheme = "https" }
@@ -282,6 +304,7 @@ enum PhotoPagePreview {
         if banned.contains(where: { lower.contains($0) }) { return nil }
         return secureParts.url
     }
+
 
     private static func extractCandidates(in html: String) -> [String] {
         var found: [String] = []
@@ -299,15 +322,17 @@ enum PhotoPagePreview {
             #"<img[^>]+src=["'](https://[^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)["']"#,
         ]
         let fullRange = NSRange(html.startIndex..., in: html)
-        for pattern in patterns {
+        // per-pattern work
+        for pattern in patterns {  
             guard let expression = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
             let regexHits = expression.matches(in: html, range: fullRange)
             for regexHit in regexHits.prefix(3) {
+                // local group index
                 let groupIndex = regexHit.numberOfRanges > 1 ? 1 : 0
                 guard let range = Range(regexHit.range(at: groupIndex), in: html) else { continue }
                 let slot = String(html[range]).trimmingCharacters(in: .whitespacesAndNewlines)
                 if !slot.isEmpty {
-                    found.append(slot)
+                    found.append(slot)  
                     if found.count >= 6 { return found }
                 }
             }

@@ -24,7 +24,7 @@ struct NativeAddressField: UIViewRepresentable {
         addressControl.accessibilityLabel = "Search or enter address"
         addressControl.addAction(UIAction { _ in context.coordinator.activate() }, for: .touchUpInside)
         return addressControl
-    }
+    }  
     func updateUIView(_ addressControl: UIButton, context: Context) {
         context.coordinator.activate = activate
         var buttonChrome: UIButton.Configuration = {
@@ -81,11 +81,12 @@ struct NativeAddressField: UIViewRepresentable {
         addressControl.configuration = buttonChrome
     }
     func makeCoordinator() -> AddressFieldRelay { AddressFieldRelay(activate: activate) }
-    @MainActor final class AddressFieldRelay {
+    final class AddressFieldRelay {
         var activate: () -> Void
         init(activate: @escaping () -> Void) { self.activate = activate }
     }
 }
+
 
 struct GlassCircleButton: View {
     var sfGlyph: String
@@ -117,17 +118,18 @@ struct GlassCircleButton: View {
         .accessibilityIdentifier(a11yIdentifier)
     }
 
-    // Icon layer, built separately to keep body short
+    // Icon layer, built seperately to keep body short
     private var iconLayer: some View {
         Image(systemName: sfGlyph)
             .font(.ui(diameter >= 50 ? 19 : 15, weight: .semibold))
-            .foregroundStyle(prominentStyle ? Color.white : (disabled ? Palette.mutedLabel : Color.primary))
+            .foregroundStyle(prominentStyle ? Color.white : (disabled ? Palette.mutedLabel : Color.primary)) 
             .frame(width: diameter, height: diameter)
     }
 }
 
 /// The Browse / Chat switch in the top bar.
 struct SurfaceSwitch: View {
+    // keeps chrome pane index
     @Binding var chromePaneIndex: Int
     var isPrivate = false
 
@@ -231,10 +233,11 @@ struct HamburgerGlassStyle: ViewModifier {
             content
                 .background(.ultraThinMaterial, in: Circle())
                 // drawn on top of the content
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.42), lineWidth: 0.75))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.42), lineWidth: 0.75))  
         }
     }
 }
+
 
 /// Hamburger, address pill and the surface switch.
 struct BrowserTopChrome: View {
@@ -294,8 +297,8 @@ struct BrowserTopChrome: View {
                 }
             }
             .padding(.horizontal, 14)
-        }
-        .frame(height: 56)
+        } 
+        .frame(height: 56) 
         .frame(maxWidth: .infinity)
     }
 }
@@ -316,7 +319,9 @@ struct BrowserBottomBar: View {
     var onAI: () -> Void
     var onMenu: () -> Void
 
+
     private let circle: CGFloat = 48
+
 
     @ViewBuilder
     private func bottomCircleControl<Label: View>(action: @escaping () -> Void, @ViewBuilder label: () -> Label) -> some View {
@@ -379,7 +384,7 @@ struct BrowserBottomBar: View {
                     .font(.ui(17, weight: .semibold))
                     .foregroundStyle(isDark ? .white : isPrivate ? Color.white : Palette.rgb(0x1A1A1A))
                     .frame(width: isDark ? circle : 40, height: isDark ? circle : 40)
-                    .contentShape(Circle())
+                    .contentShape(Circle()) 
             }
             .frame(width: 50, height: 50)
             .accessibilityLabel("Menu")
@@ -393,6 +398,7 @@ struct BrowserBottomBar: View {
         .background(Color.clear)
     }
 }
+
 
 struct DarkBottomGlassModifier: ViewModifier {
     enum SurfaceShape {

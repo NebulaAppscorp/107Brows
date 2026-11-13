@@ -43,7 +43,7 @@ struct BrowserHomeView: View {
                 heading
                 if !vault.incognito { homePromptStrip }
                 siteGrid
-                recentPages.padding(.top, vault.incognito ? -4 : 0)
+                self.recentPages.padding(.top, vault.incognito ? -4 : 0)
             }
             .padding(.horizontal, 20)
             .padding(.top, homeTopPadding)
@@ -76,10 +76,11 @@ struct BrowserHomeView: View {
                 // native toolbar, so the glass comes for free
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showPrivateDetails = false } } }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium])  
             .presentationDragIndicator(.visible)
         }
     }
+
 
     /// Window Y of the home scroll content — bleed uses 0 when the scroll is full-screen.
     private var homeTopPadding: CGFloat {
@@ -114,6 +115,7 @@ struct BrowserHomeView: View {
         .offset(y: vault.incognito ? 0 : -1.5)
     }
 
+
     // Home prompt strip section
     private var homePromptStrip: some View {
         ScrollView(.horizontal) {
@@ -123,7 +125,7 @@ struct BrowserHomeView: View {
                         prompt == "What changed in iOS 26?" ? 232 : prompt == "Compare two products" ? 216 : 206
                     Button {
                         vault.chromePane = 1
-                        vault.composerDraft = prompt
+                        self.vault.composerDraft = prompt
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "message").font(.ui(15)).foregroundStyle(Palette.brandInk).frame(
@@ -151,7 +153,7 @@ struct BrowserHomeView: View {
         LazyVGrid(columns: siteColumns, alignment: .leading, spacing: 14) {
             ForEach(sites) { site in
                 Button {
-                    vault.navigateInput(site.domain)
+                    self.vault.navigateInput(site.domain)
                 } label: {
                     VStack(spacing: 6) {
                         ZStack {
@@ -169,7 +171,7 @@ struct BrowserHomeView: View {
                                 .frame(width: 34, height: 34)
                                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                         }
-                        Text(site.headingText)
+                        Text(site.headingText) 
                             .font(.ui(12))
                             .foregroundStyle(vault.incognito ? Palette.rgb(0xEBEBF5).opacity(0.7) : .secondary)
                             .frame(width: 60, height: 16)
@@ -202,7 +204,7 @@ struct BrowserHomeView: View {
                 }
                 Text("No recent pages")
                     .font(.ui(17, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.primary) 
                     .padding(.top, 18)
                 Text("Pages you visit will show up here.")
                     .font(.ui(15))
@@ -234,7 +236,7 @@ struct BrowserHomeView: View {
                                                     : page.recordedAt.formatted(.relative(presentation: .named)))
                                         ).font(.ui(15)).foregroundStyle(.tertiary).lineLimit(1)
                                     }
-                                    Spacer(minLength: 0)
+                                    Spacer(minLength: 0)    
                                 }
                             }.buttonStyle(.plain)
                             if vault.hasAiAnswer(page.pageURL) {
@@ -272,6 +274,7 @@ extension BrowserHomeView {
         .frame(height: 42)
     }
 }
+
 
 struct BrowserMenuAction: Identifiable {
     let headingText: String

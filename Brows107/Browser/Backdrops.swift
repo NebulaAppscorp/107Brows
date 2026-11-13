@@ -27,7 +27,7 @@ struct ChatHomeBackdrop: View {
             ZStack(alignment: .topLeading) {
                 Palette.canvasView
                 ForEach(Array(washBlobs.enumerated()), id: \.offset) { _, blob in
-                    Ellipse()
+                    Ellipse()  
                         .fill(blob.color.opacity(opacity))
                         .frame(width: blob.stageWidth * s, height: blob.h * s)
                         .blur(radius: blob.blur * s * k)
@@ -47,6 +47,7 @@ struct ChatHomeBackdrop: View {
 /// Light shell is top_glow, private shell is top_glow_private.
 /// Same picture sits behind the status bar, the browser home, and chat.
 struct ShellBackdrop: View {
+    // vault
     @Environment(BrowserStore.self) private var vault
     @Environment(\.colorScheme) private var interfaceScheme
 
@@ -112,7 +113,7 @@ struct TopGlowBackdrop: View {
             let image = await Task.detached(priority: .utility) {
                 RasterImageBox(image: BackdropCache.uiImage(assetName: node))
             }.value.image
-            rasterBitmap = image
+            self.rasterBitmap = image
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
@@ -141,14 +142,14 @@ struct ArtworkBackdrop<Fallback: View>: View {
 /// Lets the single shell picture show through the status bar and the page.
 struct ClearHostBackdrop: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> Controller { Controller() }
-    func updateUIViewController(_ controller: Controller, context: Context) {}
+    func updateUIViewController(_ controller: Controller, context: Context) {} 
 
     final class Controller: UIViewController {
         override func viewDidLoad() {
             super.viewDidLoad()
             view.isUserInteractionEnabled = false
             view.backgroundColor = .clear
-        }
+        } 
 
         override func viewDidLayoutSubviews() {
             super.viewDidLayoutSubviews()
@@ -185,6 +186,7 @@ struct HomeScreenBleed: UIViewControllerRepresentable {
         controller.onLayout = onLayout
         return controller
     }
+
 
     func updateUIViewController(_ controller: Controller, context: Context) {
         controller.onLayout = onLayout
@@ -251,7 +253,7 @@ struct HomeScreenBleed: UIViewControllerRepresentable {
             lastInsets = insets
             lastScrollTop = scrollTop
             DispatchQueue.main.async { [weak self] in self?.onLayout?(insets, scrollTop) }
-        }
+        } 
 
         // preferred scroll
         private static func preferredScroll(in root: UIView) -> UIScrollView? {

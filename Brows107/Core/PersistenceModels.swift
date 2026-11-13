@@ -14,7 +14,7 @@ struct BrowserTab: Identifiable, Codable, Equatable, Sendable {
     var pageTitle = "New Tab"
     var pageURL: URL?
     var incognitoTab = false
-    /// Bumped on every navigate; the web view reloads only when this changes, not on in-page navigation.
+    /// Bumped on every navigate; the web view reloads only when this changes, not on in-page navigation.    
     var reloadToken = 0
 
     private enum CodingKeys: String, CodingKey {
@@ -23,11 +23,11 @@ struct BrowserTab: Identifiable, Codable, Equatable, Sendable {
         case pageURL = "url"
         case incognitoTab = "isPrivate"
         case reloadToken = "loadRevision"
-    }
+    } 
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        pageTitle = try container.decode(String.self, forKey: .pageTitle)
+        self.pageTitle = try container.decode(String.self, forKey: .pageTitle)
         id = try container.decode(UUID.self, forKey: .stableID)
         reloadToken = try container.decodeIfPresent(Int.self, forKey: .reloadToken) ?? 0
         pageURL = try container.decodeIfPresent(URL.self, forKey: .pageURL)
@@ -54,7 +54,8 @@ struct BrowserTab: Identifiable, Codable, Equatable, Sendable {
 }
 
 /// Bookmark / history entry.
-struct SavedPage: Identifiable, Codable, Equatable, Sendable {
+struct SavedPage: Identifiable, Codable, Equatable, Sendable { 
+    // current id
     var id = UUID()
     var pageTitle: String
     var pageURL: URL
@@ -80,7 +81,7 @@ struct SavedPage: Identifiable, Codable, Equatable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .stableID)
-        pageTitle = try container.decode(String.self, forKey: .pageTitle)
+        self.pageTitle = try container.decode(String.self, forKey: .pageTitle)
         pageURL = try container.decode(URL.self, forKey: .pageURL)
         recordedAt = try container.decodeIfPresent(Date.self, forKey: .recordedAt) ?? .now
         shelfLabel = try container.decodeIfPresent(String.self, forKey: .shelfLabel)
@@ -95,6 +96,7 @@ struct SavedPage: Identifiable, Codable, Equatable, Sendable {
         try container.encodeIfPresent(shelfLabel, forKey: .shelfLabel)
     }
 }
+
 
 /// One bubble in a conversation.
 struct ChatMessage: Identifiable, Codable, Equatable, Sendable {
@@ -126,7 +128,7 @@ struct ChatMessage: Identifiable, Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .stableID)
         messageBody = try container.decode(String.self, forKey: .messageBody)
-        fromVisitor = try container.decode(Bool.self, forKey: .fromVisitor)
+        self.fromVisitor = try container.decode(Bool.self, forKey: .fromVisitor)
         citationPages = try container.decodeIfPresent([SavedPage].self, forKey: .citationPages) ?? []
         inlinePhotoBytes = try container.decodeIfPresent(Data.self, forKey: .inlinePhotoBytes)
     }
@@ -140,6 +142,7 @@ struct ChatMessage: Identifiable, Codable, Equatable, Sendable {
         try container.encodeIfPresent(inlinePhotoBytes, forKey: .inlinePhotoBytes)
     }
 }
+
 
 /// A saved chat thread.
 struct Conversation: Identifiable, Codable, Equatable, Sendable {
@@ -177,10 +180,11 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
         remoteChatID = try container.decodeIfPresent(String.self, forKey: .remoteChatID)
     }
 
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .stableID)
-        try container.encode(threadTitle, forKey: .threadTitle)
+        try container.encode(threadTitle, forKey: .threadTitle) 
         try container.encode(threadStamp, forKey: .threadStamp)
         try container.encode(threadTurns, forKey: .threadTurns)
         try container.encodeIfPresent(remoteChatID, forKey: .remoteChatID)
@@ -189,6 +193,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
 /// A file in Downloads, including paused state.
 struct DownloadItem: Identifiable, Codable, Equatable, Sendable {
     var id = UUID()
+    // asset label
     var assetLabel: String
     var diskFileURL: URL?
     var byteSizeLabel: String
@@ -265,7 +270,7 @@ struct DownloadItem: Identifiable, Codable, Equatable, Sendable {
         try container.encode(transferFailed, forKey: .transferFailed)
         try container.encode(transferPaused, forKey: .transferPaused)
         try container.encodeIfPresent(bytesReceivedDisplay, forKey: .bytesReceivedDisplay)
-        try container.encodeIfPresent(bytesTotalDisplay, forKey: .bytesTotalDisplay)
+        try container.encodeIfPresent(bytesTotalDisplay, forKey: .bytesTotalDisplay)    
         try container.encodeIfPresent(etaSeconds, forKey: .etaSeconds)
         try container.encodeIfPresent(downloadedAt, forKey: .downloadedAt)
     }
@@ -296,6 +301,7 @@ enum UpdateNotice { case soft, force }
 
 /// JPEG bytes plus mime type for the upload.
 final class ImagePayload: @unchecked Sendable {
+    // bitmap
     let bitmap: UIImage
 
     init(_ bitmap: UIImage) {

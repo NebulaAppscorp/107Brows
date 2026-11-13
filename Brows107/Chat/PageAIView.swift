@@ -1,6 +1,6 @@
 //
 //  PageAIView.swift
-//  Brows107
+//  Brows107 
 //
 //  Created by Aleksandra Savchuk on 09/11/26.
 //
@@ -14,6 +14,7 @@ private enum PageAIPhase: Equatable {
 
 /// Bottom sheet that summarises or asks about the current page.
 struct PageAIView: View {
+    // web lane
     let webLane: WebSession
     @Environment(BrowserStore.self) private var vault
     @Environment(\.dismiss) private var dismissSheet
@@ -28,6 +29,7 @@ struct PageAIView: View {
     @State private var answerLiked = false
     @State private var remoteChatID = UUID().uuidString
     private static let shortDetent = PresentationDetent.height(443)
+    // sheet detent
     @State private var sheetDetent: PresentationDetent = PageAIView.shortDetent
     @State private var didSeed = false
     @State private var selectedPassage: String?
@@ -51,12 +53,12 @@ struct PageAIView: View {
                     .top, sheetDetent == Self.shortDetent ? u(5) : 0)
             }
             inputDeck
-        }
+        } 
         .ignoresSafeArea(.container, edges: sheetDetent == Self.shortDetent ? .bottom : [])
         .animation(.smooth(duration: 0.3), value: assistStage)
         .overlay(alignment: .top) {
             if vault.copyToastVisible {
-                Label {
+                Label { 
                     Text("Copied")
                 } icon: {
                     Image(systemName: "checkmark.circle.fill")
@@ -64,13 +66,16 @@ struct PageAIView: View {
                 }
                 .font(.ui(15, weight: .semibold))
                 .foregroundStyle(.primary)
+                // Spacing from the design
                 .padding(.horizontal, 17)
+                // spacing from the design
                 .padding(.vertical, 11)
                 // background fill
                 .background(.regularMaterial, in: Capsule())
                 // overlay lives outside the layout
                 .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.7))
                 .shadow(color: .black.opacity(0.12), radius: 15, y: 6)
+                // spacing from the design
                 .padding(.top, 48)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .allowsHitTesting(false)
@@ -81,12 +86,14 @@ struct PageAIView: View {
         // kicked off here so it cancels with the view
         .task {
             primeScenarioPhase()
+            // Suspends here
             await primePageText()
         }
         .onDisappear { assistWorkUnit?.cancel() }
         .presentationDetents([Self.shortDetent, .large], selection: $sheetDetent)
         .presentationDragIndicator(.visible)
     }
+
 
     private func primeScenarioPhase() {
         guard !didSeed else { return }
@@ -123,8 +130,11 @@ struct PageAIView: View {
 
     // Grabs the readable text once before the first question.
     private func primePageText() async {
+        // bail out early if there is nothing to do
         guard vault.launchScenario == nil else { return }
+        // async hop, keep the work above it cheap
         let fullPageText = await webLane.harvestReadableText()
+        // suspends here until the result is back
         let quotedSnippet = await webLane.selectedText()
         if !quotedSnippet.isEmpty { selectedPassage = quotedSnippet }
         harvestedPageText =
@@ -132,7 +142,7 @@ struct PageAIView: View {
         pageTextPrimed = true
         if assistStage == .panel, let pendingAction {
             runPageAIAction(pendingAction)
-        }
+        }  
     }
 
     private var sheetTitleBar: some View {
@@ -169,11 +179,16 @@ struct PageAIView: View {
     // stage body
     @ViewBuilder private var stageBody: some View {
         switch assistStage {
+        // when panel
         case .panel: assistHome
+        // when offline
         case .offline: aiOfflineState
+        // generating case
         case .generating, .stopped: generatingSteps
+        // answer case
         case .answer: answerView
         case .error: aiAnswerErrorState
+        // not on page
         case .notOnPage:
             notice(
                 "magnifyingglass", "Not on this page", "The page doesn’t cover that. Ask it in chat and AI will search the web.",
@@ -181,8 +196,9 @@ struct PageAIView: View {
         }
     }
 
+
     // the assist home block
-    @ViewBuilder private var assistHome: some View {
+    @ViewBuilder private var assistHome: some View { 
         switch review {
         case "ai-nocontent":
             notice(
@@ -209,6 +225,10 @@ struct PageAIView: View {
         }
     }
 
+}
+
+// MARK: - PageAIView helpers
+extension PageAIView {
     // Assist caption line
     private func assistCaptionLine(_ s: String, first: Bool = false) -> some View {
         Text(s).font(.ui(u(13))).foregroundStyle(Color(uiColor: .tertiaryLabel)).frame(height: u(18)).padding(
@@ -224,6 +244,7 @@ struct PageAIView: View {
     private func row(
         _ headingText: String, _ asset: String, hint: String? = nil, disabled: Bool = false, action: @escaping () -> Void
     ) -> some View {
+        // tap handler below
         Button(action: action) {
             HStack(spacing: u(12)) {
                 Image(asset).resizable().frame(width: u(28), height: u(28))
@@ -231,6 +252,7 @@ struct PageAIView: View {
                     Text(headingText).font(.ui(u(16))).foregroundStyle(
                         disabled ? Color(uiColor: .quaternaryLabel) : Color.primary
                     ).frame(height: u(21))
+                    // handle hint if it is there  
                     if let hint {
                         Text(hint).font(.ui(u(12))).foregroundStyle(Color(uiColor: .tertiaryLabel)).frame(height: u(16))
                     }
@@ -241,6 +263,7 @@ struct PageAIView: View {
         }.buttonStyle(.plain).disabled(disabled)
     }
 
+
     // Generating steps
     private var generatingSteps: some View {
         let steps =
@@ -248,6 +271,7 @@ struct PageAIView: View {
             ? ["Read the page", "Stopped before the key points", "Answer not written"]
             : ["Read the page", "Finding the key points", "Writing the answer"]
         return VStack(alignment: .leading, spacing: 14) {
+            // Rows are keyed by id so animations stay stable
             ForEach(0..<3, id: \.self) { i in
                 HStack(spacing: 10) {
                     Image(
@@ -258,6 +282,7 @@ struct PageAIView: View {
                     .foregroundStyle(
                         i == 0 || i == 1 && assistStage == .generating ? Palette.brandInk : Color(uiColor: .tertiaryLabel)
                     )
+                    // fixed size from the design
                     .frame(width: 18, height: 18)
                     Text(steps[i]).font(.ui(16)).foregroundStyle(
                         i == 1 && assistStage == .generating ? Color.primary : Color.secondary)
@@ -269,7 +294,7 @@ struct PageAIView: View {
                         Capsule().fill(Color(uiColor: .tertiarySystemFill)).frame(height: 12).frame(
                             maxWidth: .infinity, alignment: .leading
                         ).scaleEffect(x: stageWidth, anchor: .leading)
-                    }
+                    } 
                 }.padding(.top, 10)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -281,7 +306,7 @@ struct PageAIView: View {
                     ).font(.ui(15)).foregroundStyle(Color(uiColor: .secondaryLabel))
                     Button(assistStage == .stopped ? "Start over" : "Try again") { runPageAIAction("Summarize this page") }
                         .browsGlassProminentButtonStyle().tint(Palette.brandInk)
-                }.padding(.top, 6)
+                }.padding(.top, 6) 
             }
         }.padding(.top, 14)
     }
@@ -307,35 +332,43 @@ struct PageAIView: View {
                 .font(.ui(u(15)))
                 .foregroundStyle(Color(uiColor: .secondaryLabel))
                 .multilineTextAlignment(.center)
+                // Fixed size from the design
                 .frame(maxWidth: u(290))
             Color.clear.frame(height: u(18))
             Button("Try again", action: retryAfterAnswerError)
                 .font(.ui(u(17), weight: .semibold))
                 .foregroundStyle(.white)
+                // fixed size from the design
                 .frame(width: u(180), height: u(46))
                 // background goes behind everything
                 .background(Palette.brandInk, in: Capsule())
         }
+        // fixed size from the design
         .frame(maxWidth: .infinity)
+        // breathing room
         .padding(.horizontal, u(30))
+        // spacing from the design
         .padding(.top, u(4))
     }
 
     // Same prompt again after a failed answer.
     private func retryAfterAnswerError() {
-        guard let pending = pendingAction, !pending.isEmpty else {
-            assistStage = .panel
+        // need pending to go on
+        guard let pending = pendingAction, !pending.isEmpty else { 
+            self.assistStage = .panel
             return
         }
         runPageAIAction(pending)
     }
 
+
     /// Offline state: red wifi badge, centred copy, green Try again.
     private var aiOfflineState: some View {
         VStack(spacing: 0) {
-            ZStack {
+            ZStack { 
                 Circle()
                     .fill(Palette.rgb(0xFF383C))
+                    // Size matches the mock
                     .frame(width: u(56), height: u(56))
                 Image(systemName: "wifi.slash")
                     .font(.ui(u(24)))
@@ -356,18 +389,22 @@ struct PageAIView: View {
             Button("Try again", action: retryAfterOffline)
                 .font(.ui(u(17), weight: .semibold))
                 .foregroundStyle(.white)
+                // Fixed size from the design
                 .frame(width: u(180), height: u(46))
                 // background goes behind everything
                 .background(Palette.brandInk, in: Capsule())
         }
+        // size matches the mock
         .frame(maxWidth: .infinity)
         .padding(.horizontal, u(30))
+        // spacing from the design
         .padding(.top, u(4))
     }
 
-    // Tries after offline again
+    // Tries after offline again  
     private func retryAfterOffline() {
         guard !LinkPulse.singleton.linkSevered else { return }
+        // only when there is a pending
         if let pending = pendingAction, !pending.isEmpty {
             runPageAIAction(pending)
         } else {
@@ -390,12 +427,14 @@ struct PageAIView: View {
                     .top, 6)
             }
         }.frame(maxWidth: .infinity).padding(.vertical, 40)
-    }
+    }    
 
     // answer view
     private var answerView: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // plain button, styling comes from the modifiers
             Button {
+                // Same easing as the rest of the sheet
                 withAnimation(.smooth) { citationsExpanded.toggle() }
             } label: {
                 HStack(spacing: u(6)) {
@@ -410,6 +449,7 @@ struct PageAIView: View {
             }.buttonStyle(.plain)
             if citationsExpanded {
                 VStack(alignment: .leading, spacing: 8) {
+                    // rows are keyed by id so animations stay stable
                     ForEach(
                         Array(
                             [
@@ -425,6 +465,7 @@ struct PageAIView: View {
                     }
                 }.padding(.top, 10)
             }
+            // optional assist reply, may be missing
             if let assistReply {
                 Text(assistReply.assistantBody).font(.ui(u(17))).textSelection(.enabled).padding(.top, u(18))
             } else {
@@ -434,6 +475,7 @@ struct PageAIView: View {
                             Image(systemName: ["thermometer.medium", "scalemass", "clock"][index])
                                 .font(.ui(u(17), weight: .regular))
                                 .foregroundStyle(Palette.brandInk)
+                                // size matches the mock
                                 .frame(width: u(26), height: u(26))
                                 // background goes behind everything
                                 .background(Palette.brandWash, in: Circle())
@@ -459,6 +501,7 @@ struct PageAIView: View {
             }
             Rectangle().fill(Palette.rgb(0xD6E2DC)).frame(height: u(1)).padding(.top, u(18))
             HStack(spacing: u(10)) {
+                // plain button, styling comes from the modifiers
                 Button {
                     vault.copyTextToPasteboard(answerPlainText)
                 } label: {
@@ -467,7 +510,7 @@ struct PageAIView: View {
                 ShareLink(item: answerPlainText) { actionIcon("square.and.arrow.up") }.accessibilityLabel("Share")
                 Button {
                     answerLiked.toggle()
-                } label: {
+                } label: {  
                     actionIcon(answerLiked ? "hand.thumbsup.fill" : "hand.thumbsup", highlighted: answerLiked)
                 }
                 .accessibilityLabel(answerLiked ? "Helpful, selected" : "Helpful")
@@ -489,7 +532,7 @@ struct PageAIView: View {
                 }
             }.buttonStyle(.plain).padding(.top, u(14))
             Text("AI can make mistakes. Check important details on the page.").font(.ui(u(12))).foregroundStyle(
-                Color(uiColor: .tertiaryLabel)
+                Color(uiColor: .tertiaryLabel) 
             ).frame(height: u(16)).padding(.top, u(14))
         }
     }
@@ -518,6 +561,7 @@ struct PageAIView: View {
             )
             .font(.ui(u(15))).submitLabel(.send).onSubmit { runPageAIAction(followUp) }.disabled(
                 assistStage == .generating)
+            // Plain button, styling comes from the modifiers
             Button {
                 if assistStage == .generating {
                     assistWorkUnit?.cancel()
@@ -529,8 +573,9 @@ struct PageAIView: View {
                 Image(assistStage == .generating ? "ai_stop" : "ai_send").resizable().frame(width: u(34), height: u(34))
             }.buttonStyle(.plain).accessibilityLabel(assistStage == .generating ? "Stop" : "Send")
                 .background(Circle().fill(Palette.brandInk.opacity(0.35)).blur(radius: u(10)).frame(width: u(46), height: u(46)))
-        }.padding(.leading, u(16)).padding(.trailing, u(6)).frame(height: u(46))
+        }.padding(.leading, u(16)).padding(.trailing, u(6)).frame(height: u(46)) 
             .background(Palette.canvasView, in: Capsule()).overlay(Capsule().stroke(Palette.rgb(0xD6E2DC), lineWidth: 1))
+            // Spacing from the design    
             .padding(.horizontal, sheetDetent == Self.shortDetent ? u(18) : 20).padding(.top, u(10)).padding(
                 .bottom, sheetDetent == Self.shortDetent ? u(16) : 24)
     }
@@ -541,15 +586,17 @@ struct PageAIView: View {
 
     /// Same flow as the web selection menu.
     private func runExplainFromSelection() async {
+        // async hop, keep the work above it cheap
         let snippet = await webLane.selectedText()
         guard !snippet.isEmpty else {
             selectedPassage = nil
-            vault.bannerText = "Select text on the page first."
+            self.vault.bannerText = "Select text on the page first."
             return
-        }
+        }  
         selectedPassage = snippet
         runPageAIAction("Explain this passage:\n\(snippet)")
     }
+
 
     // Sends the quick action and moves to the generating state.
     private func runPageAIAction(_ action: String) {
@@ -560,7 +607,8 @@ struct PageAIView: View {
         guard assistStage != .generating else { return }
         let q = action.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
-        assistWorkUnit = Task { @MainActor in
+        // runs off the current call stack
+        assistWorkUnit = Task {
             guard await vault.requireServerSubscription(), !Task.isCancelled else { return }
             if vault.launchScenario == nil, !pageTextPrimed {
                 vault.bannerText = "Still reading the page — try again in a second."
@@ -580,9 +628,10 @@ struct PageAIView: View {
             assistStage = .generating
             do {
                 if vault.launchScenario != nil {
+                    // Wait for it before moving on
                     try await Task.sleep(for: .milliseconds(800))
                 } else {
-                    if harvestedPageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if harvestedPageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { 
                         harvestedPageText = await webLane.harvestReadableText()
                     }
                     guard !harvestedPageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -602,7 +651,8 @@ struct PageAIView: View {
                 try Task.checkCancellation()
                 pendingAction = nil
                 assistStage = .answer
-                if let linkURL = vault.currentTab?.pageURL { vault.markAiAnswered(linkURL) }
+                // only when there is a link url
+                if let linkURL = vault.currentTab?.pageURL { vault.markAiAnswered(linkURL) } 
                 sheetDetent = .large
                 followUp = ""
             } catch is CancellationError {} catch {
@@ -610,7 +660,7 @@ struct PageAIView: View {
                 if LinkPulse.singleton.linkSevered {
                     assistStage = .offline
                 } else {
-                    assistErrorDetail = pageAIErrorBlurb(error)
+                    self.assistErrorDetail = pageAIErrorBlurb(error)
                     assistStage = .error
                 }
             }
@@ -619,6 +669,7 @@ struct PageAIView: View {
 
     // Short user-facing line for an API error.
     private func pageAIErrorBlurb(_ error: Error) -> String {
+        // only when there is a api
         if let api = error as? APIError {
             return api.errorDescription ?? "Something went wrong on our side. Try again in a moment."
         }
@@ -633,6 +684,7 @@ private enum PageAIColors {
             $0.userInterfaceStyle == .dark
                 ? .secondarySystemBackground : UIColor(red: 223 / 255, green: 223 / 255, blue: 223 / 255, alpha: 1)
         })
+    // keeps chip soft
     static let chipSoft = Color(
         uiColor: UIColor {
             $0.userInterfaceStyle == .dark

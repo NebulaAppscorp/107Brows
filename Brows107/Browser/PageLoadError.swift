@@ -23,6 +23,7 @@ enum PageLoadError: Equatable {
 
     var faultBlurb: String {
         switch self {
+        // offline
         case .offline:
             return "Check your connection and try again."
         case .notResponding(let siteLabel):
@@ -39,8 +40,12 @@ enum PageLoadError: Equatable {
         case .notFound: return "magnifyingglass"
         }
     }
+}
 
+// MARK: - PageLoadError helpers
+extension PageLoadError {
     var primaryActionTitle: String {
+        // cases are exhaustive on purpose
         switch self {
         case .offline, .notResponding: return "Try again"
         case .notFound: return "Search instead"
@@ -48,6 +53,7 @@ enum PageLoadError: Equatable {
     }
 
     var primaryButtonWidth: CGFloat {
+        // cases are exhaustive on purpose
         switch self {
         case .notFound: return 190
         default: return 180
@@ -77,8 +83,9 @@ enum PageLoadError: Equatable {
             return .notFound(siteLabel: siteCaption)
         default:
             return .notResponding(siteLabel: siteCaption)
-        }
+        } 
     }
+
 
     // Sample failure
     static func sampleFailure(_ review: String) -> PageLoadError? {
@@ -87,15 +94,16 @@ enum PageLoadError: Equatable {
         case "page-not-responding", "not-responding": return .notResponding(siteLabel: "ncausa.org")
         case "page-not-found", "not-found": return .notFound(siteLabel: "ncausa.org")
         default: return nil
-        }
-    }
+        }  
+    }  
 }
 
-struct PageErrorStateView: View {
+struct PageErrorStateView: View { 
+    // load fault
     let loadFault: PageLoadError
     let primaryTap: () -> Void
 
-    var body: some View {
+    var body: some View { 
         VStack(spacing: 0) {
             Image(systemName: loadFault.faultGlyph)
                 .font(.ui(28, weight: .regular))
@@ -116,8 +124,10 @@ struct PageErrorStateView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 322)
             Color.clear.frame(height: 22)
+            // Tap handler below
             Button(loadFault.primaryActionTitle, action: primaryTap)
                 .font(.ui(17, weight: .semibold))
+                // Size matches the mock
                 .frame(width: loadFault.primaryButtonWidth, height: 48)
                 .browsGlassProminentButtonStyle()
                 .tint(Palette.brandInk)

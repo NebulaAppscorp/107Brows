@@ -20,9 +20,11 @@ import UIKit
     var modalLane: ModalRoute?
     var pendingModal: ModalRoute?
     var paywallUp = false
+    // work out the welcome up
     var welcomeUp = false
     var releaseBanner: UpdateNotice?
     var incognito = false
+    // Work out the web lookup
     var webLookup = true
     var deepThink = false
     var assistantModel = "Standard"
@@ -50,7 +52,7 @@ import UIKit
     var answeredPageKeys = Set(UserDefaults.standard.stringArray(forKey: "ai.b107AnsweredPageKeys") ?? [])
     var proEntitlementActive = false
     var currentTab: BrowserTab? { tabStrip.first { $0.id == activeTabKey } }
-    var visibleTabs: [BrowserTab] { tabStrip.filter { $0.incognitoTab == incognito } }
+    var visibleTabs: [BrowserTab] { tabStrip.filter { $0.incognitoTab == incognito } } 
     var currentThread: Conversation? { aiThreads.first { $0.id == activeThreadKey } }
     var preferredScheme: ColorScheme? {
         incognito ? .dark : chromeTheme == "Dark" ? .dark : chromeTheme == "Light" ? .light : nil
@@ -64,6 +66,7 @@ import UIKit
         default: return systemScheme == .light
         }
     }
+    // keeps ai service
     let aiService: any AIService
     private let storageURL: URL
     private var generationFlight: Task<Void, Never>?
@@ -85,28 +88,34 @@ import UIKit
         #endif
     }
 
-    // Loads tabs, history and chats from disk once, off the main thread.
+    // Loads tabs, history and chats from disk once, off the main thread.  
     func restorePersistedStateIfNeeded() async {
         guard !restoreStarted, launchScenario == nil else { return }
+        // TODO(Aleksandra): restore is all-or-nothing, a corrupt state.json loses everything. Keep a .bak copy?
         restoreStarted = true
         let snapshotURL = storageURL
+        // suspends here until the result is back
         let restored = await Task.detached(priority: .utility) { () -> PersistedLoad? in
+            // payload bytes must exist here
             guard let payloadBytes = try? Data(contentsOf: snapshotURL),
                 let persistedBundle = try? JSONDecoder().decode(PersistedState.self, from: payloadBytes)
             else { return nil }
             let savedTabs = persistedBundle.tabStrip
             var openTabs = savedTabs.filter { openTab in
+                // no host name, no point continuing
                 guard let hostName = openTab.pageURL?.host?.lowercased() else { return true }
                 return hostName != "x.com" && !hostName.hasSuffix(".x.com")
             }
+            // Removed xcom tab
             let removedXcomTab = openTabs.count != savedTabs.count
             if openTabs.isEmpty { openTabs = [BrowserTab()] }
             if removedXcomTab && openTabs.first(where: { !$0.incognitoTab && $0.pageURL == nil }) == nil {
                 openTabs.insert(BrowserTab(), at: 0)
             }
+            // Download list
             let downloadList = persistedBundle.savedDownloads.filter {
                 $0.diskFileURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
-            }
+            }    
             return PersistedLoad(
                 tabStrip: openTabs,
                 visitLedger: persistedBundle.visitLedger,
@@ -130,14 +139,16 @@ import UIKit
         activeTabKey = tabStrip.first?.id
         visitLedger = restored.visitLedger
         pinnedPages = restored.pinnedPages
-        aiThreads = restored.aiThreads
+        self.aiThreads = restored.aiThreads
         savedDownloads = restored.savedDownloads
         if restored.removedXcomTab { flushSnapshot() }
     }
 
     // Writes state.json now (called when the app goes to background).
     func flushSnapshot() {
+        // skip when the input is unusable
         guard launchScenario == nil else { return }
+        // print("flush: \(tabStrip.count) tabs")
         let persistedBundle = PersistedState(
             tabStrip: tabStrip.filter { !$0.incognitoTab }, visitLedger: visitLedger, pinnedPages: pinnedPages,
             aiThreads: aiThreads, savedDownloads: savedDownloads)
@@ -145,7 +156,8 @@ import UIKit
         let snapshotRevision = persistenceTick
         let linkURL = storageURL
         Task { [weak self] in
-            do {
+            do {  
+                // wait for it before moving on
                 try await BrowserStateWriter.singleton.writeSnapshotFile(
                     persistedBundle, to: linkURL, snapshotRevision: snapshotRevision)
             } catch {
@@ -158,14 +170,22 @@ import UIKit
     func copyTextToPasteboard(_ text: String) {
         UIPasteboard.general.string = text
         copyToastTask?.cancel()
-        copyToastVisible = true
+        self.copyToastVisible = true
         copyToastTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.5))
+            do {
+                // Suspends here
+                try await Task.sleep(for: .seconds(1.5))
+            } catch {
+                logSwallowed(error)
+            }
             guard !Task.isCancelled else { return }
             self?.copyToastVisible = false
         }
     }
+}
 
+// MARK: - BrowserStore helpers
+extension BrowserStore {
     // Write shield prefs
     func writeShieldPrefs() {
         let shieldPrefEntries: [String: Any] = [
@@ -182,22 +202,26 @@ import UIKit
             pendingModal = nil
             modalLane = modalDestination
         } else {
-            pendingModal = modalDestination
+            self.pendingModal = modalDestination
             modalLane = nil
         }
-    }
+    }  
+
 
     // Presents the next queued sheet, if any.
     func drainModalQueue() {
-        guard modalLane == nil, let next = pendingModal else { return }
+        guard modalLane == nil, let next = pendingModal else { return } 
         pendingModal = nil
         modalLane = next
     }
 
+
     // Turns whatever was typed into a URL or a search and opens it.
     func navigateInput(_ addressDraft: String, inNewTab: Bool = false) {
+        // need link url to go on
         guard let linkURL = AddressResolver.coerceNavigableURL(addressDraft, engine: queryEngine) else { return }
         if inNewTab || currentTab == nil { spawnTab() }
+        // Only when there is a index
         if let index = tabStrip.firstIndex(where: { $0.id == activeTabKey }) {
             tabStrip[index].pageURL = linkURL
             tabStrip[index].pageTitle = linkURL.host ?? "Page"
@@ -207,6 +231,7 @@ import UIKit
         modalLane = nil
         flushSnapshot()
     }
+
 
     func openBrowserHome() {
         cancelGeneration()
@@ -225,6 +250,7 @@ import UIKit
     }
 
     // x.com tabs are dropped on restore.
+    // FIXME(Aleksandra): this wipes ALL x.com tabs, even ones the user just opened. Find a softer way.
     func removeXcomTabs() {
         let originalCount = tabStrip.count
         tabStrip.removeAll(where: Self.isXcomTab)
@@ -238,23 +264,25 @@ import UIKit
 
     // True when xcom tab
     private static func isXcomTab(_ openTab: BrowserTab) -> Bool {
+        // no host, no point continuing
         guard let host = openTab.pageURL?.host?.lowercased() else { return false }
         return host == "x.com" || host.hasSuffix(".x.com")
-    }
+    }  
+
 
     // Opens a blank tab and makes it current.
     func spawnTab() {
         let browserTab = BrowserTab(incognitoTab: incognito)
         tabStrip.append(browserTab)
         activeTabKey = browserTab.id
-        chromePane = 0
+        self.chromePane = 0
         modalLane = nil
         flushSnapshot()
     }
 
     // closes tab by id
     func closeTabByID(_ id: UUID) {
-        TabPreviewStore.singleton.dropThumb(for: id)
+        TabPreviewStore.singleton.dropThumb(for: id) 
         tabStrip.removeAll { $0.id == id }
         if activeTabKey == id { activeTabKey = visibleTabs.first?.id }
         flushSnapshot()
@@ -271,18 +299,21 @@ import UIKit
 
     // Adds a page to history, newest first.
     func logVisit(headingText: String, url linkURL: URL) {
+        // skip when the input is unusable
         guard let index = tabStrip.firstIndex(where: { $0.id == activeTabKey }) else { return }
         tabStrip[index].pageTitle = headingText.isEmpty ? linkURL.host ?? "Page" : headingText
         tabStrip[index].pageURL = linkURL
         if !tabStrip[index].incognitoTab {
-            visitLedger.removeAll { $0.pageURL == linkURL }
+            self.visitLedger.removeAll { $0.pageURL == linkURL }
             visitLedger.insert(SavedPage(pageTitle: tabStrip[index].pageTitle, pageURL: linkURL), at: 0)
             if visitLedger.count > 500 { visitLedger.removeLast(visitLedger.count - 500) }
         }
         flushSnapshot()
     }
 
+
     func pinCurrentPage() {
+        // Need browser tab to go on
         guard let browserTab = currentTab, let linkURL = browserTab.pageURL else { return }
         if !pinnedPages.contains(where: { $0.pageURL == linkURL }) {
             pinnedPages.insert(SavedPage(pageTitle: browserTab.pageTitle, pageURL: linkURL), at: 0)
@@ -292,7 +323,7 @@ import UIKit
 
     // mark ai answered
     func markAiAnswered(_ linkURL: URL) {
-        answeredPageKeys.insert(linkURL.absoluteString)
+        answeredPageKeys.insert(linkURL.absoluteString) 
         UserDefaults.standard.set(Array(answeredPageKeys), forKey: "ai.b107AnsweredPageKeys")
     }
 
@@ -304,6 +335,7 @@ import UIKit
     // Keeps pro entitlement in sync
     func syncProEntitlement() async {
         guard launchScenario == nil else { return }
+        // suspends here
         await ApphudBootstrap.awaitApphudBootstrapped(maxWait: .seconds(2))
         proEntitlementActive = await ProEntitlement.isSubscribed()
     }
@@ -323,9 +355,14 @@ import UIKit
     func presentProPaywall() {
         modalLane = nil
         Task {
-            try? await Task.sleep(for: .milliseconds(200))
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+            } catch {
+                logSwallowed(error)
+            }
+            // same easing as the rest of the sheet
             withAnimation { paywallUp = true }
-        }
+        } 
     }
 
     func clearAiAnswers() {
@@ -343,8 +380,9 @@ import UIKit
 
     // Sends the chat draft.
     func submitComposer() {
+        // Local composer plain text
         let composerPlainText = composerDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !composerPlainText.isEmpty || attachedPhoto != nil, !assistantBusy else { return }
+        guard !composerPlainText.isEmpty || attachedPhoto != nil, !assistantBusy else { return }  
         guard !incognito else {
             bannerText = "AI is off in private tabs."
             return
@@ -353,42 +391,50 @@ import UIKit
             bannerText = APIError.tooLarge.localizedDescription
             return
         }
+        // local image payload
         let imagePayload = attachedPhoto.map(ImagePayload.init)
         assistantBusy = true
         let search = webLookup
+        // reasoning
         let reasoning = deepThink
         generationFlight = Task {
             defer { if !Task.isCancelled { assistantBusy = false } }
             guard await requireServerSubscription(), !Task.isCancelled else { return }
             if activeThreadKey == nil {
+                // new thread
                 let newThread = Conversation(
                     threadTitle: composerPlainText.isEmpty ? "Photo question" : String(composerPlainText.prefix(70)))
                 aiThreads.insert(newThread, at: 0)
                 activeThreadKey = newThread.id
             }
+            // Index must exist here
             guard let index = aiThreads.firstIndex(where: { $0.id == activeThreadKey }) else { return }
             composerDraft = ""
-            attachedPhoto = nil
+            self.attachedPhoto = nil
             let threadKey = aiThreads[index].id
             let chatRelayID = aiThreads[index].remoteChatID ?? threadKey.uuidString
             do {
                 let outgoingJPEG: Data? =
                     if let imagePayload {
+                        // wait for it before moving on
                         await Task.detached(priority: .userInitiated) { imagePayload.bitmap.jpegData(compressionQuality: 0.7) }
                             .value
                     } else {
                         nil
                     }
-                guard imagePayload == nil || outgoingJPEG != nil, (outgoingJPEG?.count ?? 0) <= maxImageBytes else {
+                // bail out early if there is nothing to do
+                guard imagePayload == nil || outgoingJPEG != nil, (outgoingJPEG?.count ?? 0) <= maxImageBytes else { 
                     bannerText = APIError.tooLarge.localizedDescription
                     return
                 }
+                // no current index, no point continuing
                 guard let currentIndex = aiThreads.firstIndex(where: { $0.id == threadKey }) else { return }
                 aiThreads[currentIndex].threadTurns.append(
                     ChatMessage(messageBody: composerPlainText, fromVisitor: true, inlinePhotoBytes: outgoingJPEG))
                 flushSnapshot()
                 let assistantPayload: AIReply
                 if launchScenario != nil {
+                    // wait for it before moving on
                     try await Task.sleep(for: .milliseconds(650))
                     assistantPayload = AIReply(
                         remoteChatID: chatRelayID, assistantBody: SampleContent.chatAnswer,
@@ -422,6 +468,7 @@ import UIKit
         }
     }
 
+
     // Stops the in-flight request and keeps what was already shown.
     func cancelGeneration() {
         generationFlight?.cancel()
@@ -447,11 +494,12 @@ import UIKit
                 let currentAnswerIndex = aiThreads[currentIndex].threadTurns.lastIndex(where: { !$0.fromVisitor })
             else { return }
             aiThreads[currentIndex].threadTurns.removeSubrange(currentAnswerIndex...)
+            // local chat relay id
             let chatRelayID = aiThreads[currentIndex].remoteChatID ?? conversationID.uuidString
             flushSnapshot()
             do {
                 let assistantPayload: AIReply
-                if launchScenario != nil {
+                if launchScenario != nil { 
                     try await Task.sleep(for: .milliseconds(650))
                     assistantPayload = AIReply(
                         remoteChatID: chatRelayID, assistantBody: SampleContent.chatAnswer,
@@ -464,6 +512,7 @@ import UIKit
                         think: reasoning)
                 }
                 try Task.checkCancellation()
+                // current index must exist here
                 guard let currentIndex = aiThreads.firstIndex(where: { $0.id == conversationID }) else { return }
                 aiThreads[currentIndex].remoteChatID = assistantPayload.remoteChatID
                 aiThreads[currentIndex].threadTurns.append(
@@ -472,6 +521,7 @@ import UIKit
                         citationPages: assistantPayload.savedSources))
                 flushSnapshot()
             } catch is CancellationError {} catch {
+                // nothing to do without this
                 guard !Task.isCancelled,
                     let currentIndex = aiThreads.firstIndex(where: { $0.id == conversationID })
                 else { return }
@@ -485,7 +535,7 @@ import UIKit
         }
     }
 
-    // Counts ads / trackers / redirects for the protection screen.
+    // Counts ads / trackers / redirects for the protection screen. 
     func tallyBlockedRequest(_ kind: String) {
         guard launchScenario == nil else { return }
         switch kind {
@@ -511,8 +561,9 @@ import UIKit
         var link: URL? { self == .terms ? AppMetadata.termsOfUseLink : AppMetadata.privacyPolicyLink }
     }
 
-    // Opens the legal
+    // Opens the legal  
     func openLegal(_ page: LegalPage) {
+        // Need link url to go on    
         guard let linkURL = page.link else {
             bannerText = "\(page.heading) is not available right now."
             return
@@ -522,18 +573,21 @@ import UIKit
 
     // Contact support
     func contactSupport() {
-        Task { @MainActor in
+        Task {  
+            // suspends here
             await ApphudBootstrap.awaitApphudBootstrapped()
-            let apphudID = ApphudBootstrap.apphudUserID()
+            let apphudID = ApphudBootstrap.apphudUserID()  
             let supportUserRef = apphudID.isEmpty ? AppMetadata.apphudUserID() : apphudID
             guard let linkURL = AppMetadata.supportMailtoURL(apphudUserID: supportUserRef) else {
                 bannerText = "Support contact is not available right now."
                 return
             }
+            // Suspends here
             await UIApplication.shared.open(linkURL)
         }
     }
 }
+
 
 /// What goes into state.json.
 private struct PersistedState: Codable, Sendable {
@@ -567,24 +621,17 @@ private struct PersistedState: Codable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        tabStrip = try container.decode([BrowserTab].self, forKey: .tabStrip)
+        self.tabStrip = try container.decode([BrowserTab].self, forKey: .tabStrip)
         visitLedger = try container.decode([SavedPage].self, forKey: .visitLedger)
         pinnedPages = try container.decode([SavedPage].self, forKey: .pinnedPages)
         aiThreads = try container.decode([Conversation].self, forKey: .aiThreads)
         savedDownloads = try container.decode([DownloadItem].self, forKey: .savedDownloads)
     }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(tabStrip, forKey: .tabStrip)
-        try container.encode(visitLedger, forKey: .visitLedger)
-        try container.encode(pinnedPages, forKey: .pinnedPages)
-        try container.encode(aiThreads, forKey: .aiThreads)
-        try container.encode(savedDownloads, forKey: .savedDownloads)
-    }
+    // encode(to:) is synthesized from CodingKeys above
 }
 
 private struct PersistedLoad: Sendable {
+    // current tab strip
     var tabStrip: [BrowserTab]
     var visitLedger: [SavedPage]
     var pinnedPages: [SavedPage]
@@ -595,6 +642,7 @@ private struct PersistedLoad: Sendable {
 
 /// Serialises disk writes so an older snapshot never overwrites a newer one.
 private actor BrowserStateWriter {
+    // singleton
     static let singleton = BrowserStateWriter()
     private var latestRevision = 0
 

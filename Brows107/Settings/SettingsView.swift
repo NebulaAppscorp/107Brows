@@ -2,15 +2,17 @@
 //  SettingsView.swift
 //  Brows107
 //
-//  Created by Aleksandra Savchuk on 03/11/26.
+//  Created by Aleksandra Savchuk on 03/11/26.  
 //
 
 import SwiftUI
 import StoreKit
 import WebKit
 
+
 /// Settings sheet.
 struct SettingsView: View {
+    // current web lane
     let webLane: WebSession
     @Environment(BrowserStore.self) private var vault
     @Environment(\.dismiss) private var dismissSheet
@@ -28,14 +30,20 @@ struct SettingsView: View {
                                 Button {
                                     dismissSheet()
                                     Task {
-                                        try? await Task.sleep(for: .milliseconds(250))
+                                        do {
+                                            // Suspends here
+                                            try await Task.sleep(for: .milliseconds(250))
+                                        } catch {
+                                            logSwallowed(error)
+                                        }
+                                        // animate the change
                                         withAnimation { vault.paywallUp = true }
                                     }
                                 } label: {
                                     HStack(spacing: 10) {
                                         settingsIcon("sparkles")
                                         if vault.launchScenario == nil, !vault.proEntitlementActive {
-                                            VStack(alignment: .leading, spacing: 2) {
+                                            VStack(alignment: .leading, spacing: 2) { 
                                                 Text("Get Pro").font(.ui(17)).foregroundStyle(Palette.brandInk)
                                                 Text("Unlimited answers and photo search").font(.ui(14))
                                                     .foregroundStyle(Palette.brandInk.opacity(0.58)).lineLimit(1)
@@ -51,6 +59,7 @@ struct SettingsView: View {
                                             Text("Subscription").font(.ui(17)).browsExactLineHeight(22).foregroundStyle(
                                                 .primary)
                                             Spacer(minLength: 8)
+                                            // FIXME(Aleksandra): hard-coded date, read the real expiry from the entitlement
                                             Text("Active until Mar 12").font(.ui(17)).browsExactLineHeight(22)
                                                 .foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.75)
                                         }
@@ -62,8 +71,10 @@ struct SettingsView: View {
                                     }.padding(.horizontal, 16).frame(height: 54)
                                 }.buttonStyle(.plain)
                                 settingsDivider
+                                // plain button, styling comes from the modifiers
                                 Button {
                                     Task {
+                                        // wait for it before moving on
                                         await checkoutStore.restoreEntitlements()
                                         if let checkoutNotice = checkoutStore.checkoutNotice { vault.bannerText = checkoutNotice }
                                     }
@@ -74,7 +85,9 @@ struct SettingsView: View {
                         }
                         settingsSection("General") {
                             VStack(spacing: 0) {
+                                // Tap handler below
                                 Button {
+                                    // optional link url, may be missing
                                     if let linkURL = URL(string: BrowsSystemSettings.defaultBrowserOrAppSettings) {
                                         UIApplication.shared.open(linkURL)
                                     }
@@ -83,7 +96,7 @@ struct SettingsView: View {
                                 }.buttonStyle(.plain)
                                 settingsDivider
                                 NavigationLink {
-                                    AIAssistantSettingsView()
+                                    AIAssistantSettingsView()    
                                 } label: {
                                     settingsRowContent("AI assistant", iconName: "bubble.left", trailing: true)
                                 }.buttonStyle(.plain)
@@ -115,6 +128,7 @@ struct SettingsView: View {
                         }
                         settingsSection("About") {
                             VStack(spacing: 0) {
+                                // plain button, styling comes from the modifiers
                                 Button(action: jumpToStoreReview) {
                                     settingsRowContent("Rate the app", iconName: "star", trailing: true)
                                 }
@@ -125,7 +139,7 @@ struct SettingsView: View {
                                     message: Text(AppMetadata.shareBlurb)
                                 ) {
                                     settingsRowContent("Share the app", iconName: "square.and.arrow.up", trailing: true)
-                                }
+                                } 
                                 .buttonStyle(.plain)
                                 settingsDivider
                                 Button {
@@ -146,17 +160,21 @@ struct SettingsView: View {
                         }
                         .font(.ui(12))
                         .foregroundStyle(.secondary)
+                        // size matches the mock
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
                     }
+                    // breathing room
                     .padding(.horizontal, 20)
+                    // breathing room
                     .padding(.top, 12)
+                    // spacing from the design
                     .padding(.bottom, 28)
                 }
             }
             // background fill
             .background(
-                (interfaceScheme == .dark ? Color(uiColor: .systemGroupedBackground) : Palette.rgb(0xF2F5F3)).ignoresSafeArea()
+                (interfaceScheme == .dark ? Color(uiColor: .systemGroupedBackground) : Palette.rgb(0xF2F5F3)).ignoresSafeArea()    
             )
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -165,7 +183,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close", systemImage: "xmark") { dismissSheet() }
-                        .labelStyle(.iconOnly)
+                        .labelStyle(.iconOnly)  
                 }
             }
             .onChange(of: vault.chromeTheme) { _, _ in vault.writeShieldPrefs() }
@@ -179,12 +197,14 @@ struct SettingsView: View {
     }
 }
 
+
 // MARK: Helpers
 extension SettingsView {
     // Opens the App Store review page, or the app page if the link is missing.
     private func jumpToStoreReview() {
+        // handle link url if it is there
         if let linkURL = AppMetadata.appStoreReviewListingURL {
-            Task { @MainActor in await UIApplication.shared.open(linkURL) }
+            Task { await UIApplication.shared.open(linkURL) }
             return
         }
         requestStoreReview()
@@ -237,7 +257,7 @@ struct AIAssistantSettingsView: View {
     var body: some View {
         @Bindable var vault = vault
         Form {
-            Section {
+            Section {    
                 Toggle("Show AI button in toolbar", isOn: $vault.aiOrbVisible)
             } footer: {
                 Text("Turn off if you rarely ask about pages — the toolbar gets one button shorter.")
@@ -249,12 +269,12 @@ struct AIAssistantSettingsView: View {
             }
         }
         .navigationTitle("AI assistant").navigationBarTitleDisplayMode(.inline)
-        .browsLiquidNavBar()
+        .browsLiquidNavBar()  
         // follow the value, not the action
         .onChange(of: vault.aiOrbVisible) { _, _ in vault.writeShieldPrefs() }
         .alert("Clear AI data?", isPresented: $clear) {
             Button("Clear AI data", role: .destructive) {
-                vault.cancelGeneration()
+                vault.cancelGeneration() 
                 vault.aiThreads.removeAll()
                 vault.activeThreadKey = nil
                 vault.clearAiAnswers()

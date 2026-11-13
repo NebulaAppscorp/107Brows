@@ -56,15 +56,15 @@ struct AIReply: Decodable, Sendable {
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let container = try decoder.container(keyedBy: CodingKeys.self) 
         remoteChatID = try container.decode(String.self, forKey: .remoteChatID)
-        assistantBody = try container.decode(String.self, forKey: .assistantBody)
-        referenceMarks = try container.decodeIfPresent([AICitation].self, forKey: .referenceMarks)
+        self.assistantBody = try container.decode(String.self, forKey: .assistantBody)
+        referenceMarks = try container.decodeIfPresent([AICitation].self, forKey: .referenceMarks) 
     }
 }
 
-/// One source link the assistant cites.
-struct AICitation: Decodable, Sendable {
+/// One source link the assistant cites.  
+struct AICitation: Decodable, Sendable { 
     var pageTitle: String
     var citationHref: String?
 
@@ -85,6 +85,7 @@ struct AICitation: Decodable, Sendable {
     }
 }
 
+
 /// Everything that can go wrong talking to the backend, with user-facing text.
 enum APIError: LocalizedError, Equatable {
     case misconfigured, storage, unauthorized, balance, rateLimited, invalidResponse, unavailable, tooLarge, processing, network
@@ -103,6 +104,7 @@ enum APIError: LocalizedError, Equatable {
         }
     }
 }
+
 
 /// Network client for chat and plain-text prep.
 actor AIClient: AIService {
@@ -175,7 +177,7 @@ actor AIClient: AIService {
     // Prepare plain text
     func preparePlainText(_ draftText: String) async throws -> String {
         guard let payloadBytes = draftText.data(using: .utf8), !payloadBytes.isEmpty else { throw APIError.invalidResponse }
-        guard payloadBytes.count <= 2_000_000 else { throw APIError.tooLarge }
+        guard payloadBytes.count <= 2_000_000 else { throw APIError.tooLarge }  
         let vaultLink = try vaultLoader()
         let prepareDigest =
             vaultLink.baseEndpoint.absoluteString + vaultLink.remoteUserID
@@ -243,6 +245,7 @@ actor AIClient: AIService {
         return "en"
     }
 
+
     // Runs the request and decodes the JSON, mapping failures to APIError.
     private func performDecoded<T: Decodable & Sendable>(_ outboundRequest: URLRequest) async throws -> T {
         do {
@@ -281,6 +284,7 @@ actor AIClient: AIService {
 }
 
 /// Refuse redirects so the bearer token never leaves the original host.
+// TODO(Aleksandra): same-host redirects could be allowed, haven't needed it yet
 private final class APIRedirectPolicy: NSObject, URLSessionTaskDelegate {
     func urlSession(
         _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
@@ -303,6 +307,7 @@ private struct MessagePayload: Encodable {
 }
 
 private struct ContextSource: Decodable, Sendable {
+    // source id
     var sourceID: String
     var status: String
 
@@ -313,7 +318,7 @@ private struct ContextSource: Decodable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sourceID = try container.decode(String.self, forKey: .sourceID)
-        status = try container.decode(String.self, forKey: .status)
+        self.status = try container.decode(String.self, forKey: .status)
     }
 }
 

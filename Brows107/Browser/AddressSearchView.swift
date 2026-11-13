@@ -38,6 +38,7 @@ struct AddressSearchView: View {
     }
 
     /// Remote-suggestion rows. Review fixtures stay local; everything else comes from Google.
+    // TODO(Aleksandra): suggestion debounce (60ms below) may be too short on slow networks
     private var suggestionRows: [SearchSuggestionRow] {
         #if DEBUG
             if vault.launchScenario == "search" {
@@ -120,8 +121,12 @@ struct AddressSearchView: View {
             if vault.launchScenario != nil {
                 queryFocused = true
             } else {
-                try? await Task.sleep(for: .milliseconds(60))
-                guard !Task.isCancelled else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(60))
+                } catch {
+                    logSwallowed(error)
+                }
+                guard !Task.isCancelled else { return } 
                 queryFocused = true
             }
         }
@@ -160,7 +165,7 @@ struct AddressSearchView: View {
                 Text("Search")
                     .font(.ui(17, weight: .semibold))
                 Spacer()
-                Color.clear.frame(width: 36, height: 36)
+                Color.clear.frame(width: 36, height: 36) 
             }
             .padding(.horizontal, 16)
             .padding(.top, 10)
@@ -169,6 +174,7 @@ struct AddressSearchView: View {
         .frame(maxWidth: .infinity)
     }
 }
+
 
 // MARK: - Helpers
 extension AddressSearchView {
@@ -183,6 +189,7 @@ extension AddressSearchView {
             dismissSheet()
         }
     }
+
 
     // layout for accessory pills
     private var accessoryPills: some View {
@@ -203,12 +210,12 @@ extension AddressSearchView {
                 .padding(.vertical, 4)
             }
             .buttonStyle(SearchTapStyle())
-            Spacer(minLength: 8)
+            Spacer(minLength: 8) 
             Button {
                 privateSearch.toggle()
                 if privateSearch {
                     vault.toggleIncognito(true)
-                    remoteSuggestions = []
+                    self.remoteSuggestions = []
                     rankedHistory = []
                 } else {
                     if vault.incognito { vault.toggleIncognito(false) }
@@ -282,6 +289,7 @@ extension AddressSearchView {
         .shadow(color: .black.opacity(0.06), radius: 16, y: 6)
     }
 
+
     // Section header
     private func sectionHeader(_ headingText: String) -> some View {
         Text(headingText)
@@ -338,7 +346,7 @@ extension AddressSearchView {
                         suggestTask?.cancel()
                         vault.navigateInput(item.urlString)
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 8) {    
                             rowIcon("clock")
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(item.headingText)
@@ -361,7 +369,7 @@ extension AddressSearchView {
                 }
                 .offset(y: -0.8)
             }
-            .offset(x: 0.3, y: 0.3)
+            .offset(x: 0.3, y: 0.3) 
         }
         .scrollDismissesKeyboard(.interactively)
     }
@@ -500,9 +508,11 @@ extension AddressSearchView {
         .buttonStyle(SearchTapStyle())
     }
 
+
     private var selectedModeFill: Color {
         interfaceScheme == .dark ? Color.white.opacity(0.18) : .white
-    }
+    } 
+
 
     private var selectedModeLabel: Color {
         interfaceScheme == .dark ? .white : .black
@@ -516,8 +526,8 @@ extension AddressSearchView {
         vault.enqueueModal(to: .camera)
     }
 
-    // Clipboard → address bar in one tap.
-    private func pasteAndGo() {
+    // Clipboard → adress bar in one tap.
+    private func pasteAndGo() { 
         guard let string = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines), !string.isEmpty else {
             vault.bannerText = "Clipboard is empty."
             return
@@ -527,6 +537,7 @@ extension AddressSearchView {
         submit()
     }
 
+
     // Return key / Go.
     private func submit() {
         let query = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -534,9 +545,9 @@ extension AddressSearchView {
             queryFocused = true
             return
         }
-        suggestTask?.cancel()
+        suggestTask?.cancel() 
         VoiceDictation.shared.stop()
-        queryFocused = false
+        self.queryFocused = false
         if ask {
             guard !privateSearch, !vault.incognito else {
                 vault.bannerText = "AI is off in private tabs."
@@ -551,11 +562,17 @@ extension AddressSearchView {
         }
     }
 
+
     // Debounced so typing does not hammer the history search.
     private func scheduleHistoryRefresh(_ raw: String) {
         historyTask?.cancel()
+        // runs off the current call stack
         historyTask = Task {
-            try? await Task.sleep(for: .milliseconds(70))
+            do {
+                try await Task.sleep(for: .milliseconds(70))
+            } catch {
+                logSwallowed(error)
+            }
             guard !Task.isCancelled else { return }
             refreshHistoryMatches(raw)
         }
@@ -564,7 +581,11 @@ extension AddressSearchView {
     private func scheduleIndexRebuild() {
         indexTask?.cancel()
         indexTask = Task {
-            try? await Task.sleep(for: .milliseconds(250))
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                logSwallowed(error)
+            }
             guard !Task.isCancelled else { return }
             rebuildIndex()
             refreshHistoryMatches(draftText)
@@ -582,8 +603,9 @@ extension AddressSearchView {
             combined.append(IndexedSavedPage(page: page))
             if combined.count >= 300 { break }
         }
-        indexedPages = combined
+        self.indexedPages = combined
     }
+
 
     // Asks Google for completions, with a small cache.
     private func refreshSuggestions(_ raw: String) {
@@ -596,13 +618,18 @@ extension AddressSearchView {
             if !remoteSuggestions.isEmpty { remoteSuggestions = [] }
             return
         }
+        // async work, result lands back on the main thread
         suggestTask = Task {
             if let cached = await GoogleSuggestions.shared.cached(for: query) {
                 guard !Task.isCancelled else { return }
                 remoteSuggestions = cached
                 return
             }
-            try? await Task.sleep(for: .milliseconds(140))
+            do {
+                try await Task.sleep(for: .milliseconds(140))
+            } catch {
+                logSwallowed(error)
+            }
             guard !Task.isCancelled else { return }
             let rowBatch = await GoogleSuggestions.shared.fetch(query)
             guard !Task.isCancelled else { return }
