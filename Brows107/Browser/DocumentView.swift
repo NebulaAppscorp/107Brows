@@ -8,6 +8,7 @@
 import SwiftUI
 import PDFKit
 import UniformTypeIdentifiers
+import StoreKit
 
 
 private enum DocumentSheet: String, Identifiable {
@@ -21,6 +22,7 @@ private enum DocumentSheet: String, Identifiable {
 struct DocumentView: View {
     @Environment(BrowserStore.self) private var vault
     @Environment(\.dismiss) private var dismissSheet
+    @Environment(\.requestReview) private var requestStoreReview
     @State private var loadedPdf: PDFDocument?
     @State private var loadFailed = false
     @State private var documentTitle = "PDF Document"
@@ -144,6 +146,7 @@ struct DocumentView: View {
                         } else if let archiveFailure = openedPdfPayload.archiveError {
                             vault.bannerText = "PDF opened, but it couldn’t be saved to Downloads: \(archiveFailure)"
                         }
+                        requestStoreReview()
                     }
                 // when failure
                 case .failure:

@@ -10,12 +10,14 @@ import SwiftUI
 /// Lets the user pan/zoom a gallery photo inside the same viewfinder frame as the live camera.
 struct PhotoRegionCanvas: View { 
     let sourceBitmap: UIImage
+    let cropRect: CGRect
     @Binding var zoomScale: CGFloat
     @Binding var panShift: CGSize
     var gesturesEnabled = true
     // view state
     @State private var gestureStartScale: CGFloat = 1
     @State private var panOrigin: CGSize = .zero
+    @State private var canvasSize: CGSize = .zero
 
     var body: some View {
         GeometryReader { geo in
@@ -30,15 +32,31 @@ struct PhotoRegionCanvas: View {
                         .scaleEffect(zoomScale, anchor: .center)
                         .offset(panShift)
                 }
+                .background(Color.black.opacity(0.28))
                 .clipped()
                 .contentShape(Rectangle())
-                .allowsHitTesting(false)
                 .gesture(panGesture)
                 .simultaneousGesture(magnifyGesture)
                 .onChange(of: sourceBitmap) { _, _ in
                     gestureStartScale = 1
-                    self.panOrigin = .zero
+                    zoomScale = 1
+                    panShift = .zero
+                    panOrigin = .zero
                 }
+                .onChange(of: cropRect) { _, _ in
+                    zoomScale = max(zoomScale, minimumZoomScale(in: geo.size))
+                    panShift = PhotoRegionCrop.clampedPanShift(
+                        sourceBitmap: sourceBitmap,
+                        containerSize: geo.size,
+                        cropRect: cropRect,
+                        zoomScale: zoomScale,
+                        proposedShift: panShift
+                    )
+                    gestureStartScale = zoomScale
+                    panOrigin = panShift
+                }
+                .onAppear { canvasSize = geo.size }
+                .onChange(of: geo.size) { _, size in canvasSize = size }
         }
         .ignoresSafeArea()
     }
@@ -47,9 +65,16 @@ struct PhotoRegionCanvas: View {
         DragGesture()
             .onChanged { slot in
                 guard gesturesEnabled else { return }
-                panShift = CGSize(
+                let proposedShift = CGSize(
                     width: panOrigin.width + slot.translation.width,
                     height: panOrigin.height + slot.translation.height
+                )
+                panShift = PhotoRegionCrop.clampedPanShift(
+                    sourceBitmap: sourceBitmap,
+                    containerSize: canvasSize,
+                    cropRect: cropRect,
+                    zoomScale: zoomScale,
+                    proposedShift: proposedShift
                 )
             }
             .onEnded { _ in
@@ -62,12 +87,29 @@ struct PhotoRegionCanvas: View {
         MagnificationGesture()
             .onChanged { slot in
                 guard gesturesEnabled else { return }
-                self.zoomScale = min(max(gestureStartScale * slot, 1), 4)
+                self.zoomScale = min(max(gestureStartScale * slot, minimumZoomScale(in: canvasSize)), 4)
             }
             .onEnded { _ in
                 guard gesturesEnabled else { return }
                 gestureStartScale = zoomScale
+                panShift = PhotoRegionCrop.clampedPanShift(
+                    sourceBitmap: sourceBitmap,
+                    containerSize: canvasSize,
+                    cropRect: cropRect,
+                    zoomScale: zoomScale,
+                    proposedShift: panShift
+                )
+                panOrigin = panShift
             }
+    }
+
+    private func minimumZoomScale(in size: CGSize) -> CGFloat {
+        PhotoRegionCrop.minimumZoomScale(
+            sourceBitmap: sourceBitmap,
+            containerSize: size,
+            cropRect: cropRect,
+            panShift: panShift
+        )
     }
 }
 
@@ -223,6 +265,41 @@ enum PhotoRegionCrop {
             y: (size.height - defaultSide) / 2,
             width: defaultSide,
             height: defaultSide
+        )
+    }
+
+    static func minimumZoomScale(sourceBitmap: UIImage, containerSize: CGSize, cropRect: CGRect, panShift: CGSize) -> CGFloat {
+        let imageSize = sourceBitmap.size
+        guard imageSize.width > 0, imageSize.height > 0, containerSize.width > 0, containerSize.height > 0 else {
+            return 1
+        }
+        let fitScale = max(containerSize.width / imageSize.width, containerSize.height / imageSize.height)
+        let displayWidth = imageSize.width * fitScale
+        let displayHeight = imageSize.height * fitScale
+        let centerX = containerSize.width / 2 + panShift.width
+        let centerY = containerSize.height / 2 + panShift.height
+        let requiredWidth = (abs(cropRect.midX - centerX) + cropRect.width / 2) * 2
+        let requiredHeight = (abs(cropRect.midY - centerY) + cropRect.height / 2) * 2
+        return max(0.08, max(requiredWidth / displayWidth, requiredHeight / displayHeight))
+    }
+
+    static func clampedPanShift(
+        sourceBitmap: UIImage, containerSize: CGSize, cropRect: CGRect, zoomScale: CGFloat, proposedShift: CGSize
+    ) -> CGSize {
+        let imageSize = sourceBitmap.size
+        guard imageSize.width > 0, imageSize.height > 0, containerSize.width > 0, containerSize.height > 0 else {
+            return proposedShift
+        }
+        let fitScale = max(containerSize.width / imageSize.width, containerSize.height / imageSize.height)
+        let displayWidth = imageSize.width * fitScale * zoomScale
+        let displayHeight = imageSize.height * fitScale * zoomScale
+        let minX = cropRect.maxX - (containerSize.width + displayWidth) / 2
+        let maxX = cropRect.minX - (containerSize.width - displayWidth) / 2
+        let minY = cropRect.maxY - (containerSize.height + displayHeight) / 2
+        let maxY = cropRect.minY - (containerSize.height - displayHeight) / 2
+        return CGSize(
+            width: min(max(proposedShift.width, minX), maxX),
+            height: min(max(proposedShift.height, minY), maxY)
         )
     }
 

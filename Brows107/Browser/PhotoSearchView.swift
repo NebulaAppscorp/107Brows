@@ -9,11 +9,13 @@ import SwiftUI
 import PhotosUI
 import AVFoundation
 import ImageIO
+import StoreKit
 
 /// Camera / gallery screen for visual search.
 struct PhotoSearchView: View {
     @Environment(BrowserStore.self) private var vault
     @Environment(\.dismiss) private var dismissSheet
+    @Environment(\.requestReview) private var requestStoreReview
     @StateObject private var liveLens = LiveCamera()
     @State private var galleryToken: PhotosPickerItem?
     @State private var pickedFrame: UIImage?
@@ -56,6 +58,7 @@ struct PhotoSearchView: View {
                         if let shotBitmap = pickedFrame, (editingRegion || visualSearchBusy) {
                             PhotoRegionCanvas(
                                 sourceBitmap: shotBitmap,
+                                cropRect: layoutCropRect(in: geo.size),
                                 zoomScale: $regionScale,
                                 panShift: $regionOffset,
                                 gesturesEnabled: editingRegion && !visualSearchBusy
@@ -271,6 +274,16 @@ struct PhotoSearchView: View {
                         // Breathing room
                         .padding(.top, hintTop)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .allowsHitTesting(false)
+                }
+                if editingRegion && !visualSearchBusy {
+                    Text("Pinch to zoom · drag to move")
+                        .font(.ui(12, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .position(x: stageWidth / 2, y: topChromeBottom + 24)
                         .allowsHitTesting(false)
                 }
                 if editingRegion && !visualSearchBusy {
@@ -761,6 +774,7 @@ extension PhotoSearchView {
             visualHits = nil
             searchState = .results
             matchesVisible = true
+            requestStoreReview()
             return
         }
         // work out the raster envelope
@@ -825,6 +839,7 @@ extension PhotoSearchView {
             // wait for it before moving on
             await RecentPhotoStore.savePhotoResult(
                 shot, id: historyID, question: questionContext, answer: answer, pages: deduplicated, phase: searchState)
+            requestStoreReview()
         } catch is CancellationError {
         } catch let error as APIError where error == .network {
             guard !Task.isCancelled else { return }
