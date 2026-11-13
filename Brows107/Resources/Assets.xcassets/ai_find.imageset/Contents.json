@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "ai_find.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "ai_find@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "ai_find@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

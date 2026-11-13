@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AppStoreURL</key>
+	<string>https://apps.apple.com/app/id6833033737</string>
+	<key>ApphudAPIKey</key>
+	<string>appstr_MVZAvcY7ZTuNwruumGxYQTa9i9FbyWog5Hm</string>
+	<key>ApphudPaywallPlacementID</key>
+	<string>main</string>
+	<key>AppleAppID</key>
+	<string>6833033737</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>BreezeAI - AI Browser</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo to search for visually similar objects.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Speak a search instead of typing it.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save images from websites to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo from your library to search the web.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Speech is transcribed into the search field on this device.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This helps us show more relevant ads for the app. Declining won’t limit how the browser works.</string>
+	<key>SupportEmail</key>
+	<string>hiltonymkuhlmanmqi70@gmail.com</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>launch_canvas</string>
+		<key>UIImageName</key>
+		<string>launch_glyph</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<false/>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>

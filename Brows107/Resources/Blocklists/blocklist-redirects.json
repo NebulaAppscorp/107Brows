@@ -1,0 +1,1 @@
+[{"trigger":{"url-filter":".*","if-domain":["*adf.ly","*adfoc.us","*bcvc.mobi","*boost.ink","*linkvertise.com","*ouo.io","*publisher.linkvertise.com","*rekonise.com","*shorte.st","*shrinkearn.com"]},"action":{"type":"block"}}]

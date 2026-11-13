@@ -1,0 +1,132 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "B7E3A9C1",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionBundleGroups" : [
+
+  ],
+  "subscriptionGroups" : [
+    {
+      "id" : "D4F1B2E8",
+      "localizations" : [
+
+      ],
+      "name" : "Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "3.99",
+              "displayPrice" : "3.99",
+              "internalID" : "2B2BEECB",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "WEEKLY01",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "Weekly Pro",
+              "displayName" : "Weekly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "week_3.99",
+          "recurringSubscriptionPeriod" : "P1W",
+          "referenceName" : "Weekly",
+          "subscriptionGroupID" : "D4F1B2E8",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "29.99",
+              "displayPrice" : "29.99",
+              "internalID" : "7D99B4CD",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "YEARLY01",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "Yearly Pro",
+              "displayName" : "Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "year_29.99",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yearly",
+          "subscriptionGroupID" : "D4F1B2E8",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "subscriptionSuiteGroups" : [
+
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
+}
