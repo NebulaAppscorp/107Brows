@@ -13,6 +13,8 @@ struct PaywallView: View {
     let dismissHandler: () -> Void
     // view state
     @State private var purchase = PurchaseStore()
+    @State private var closeVisible = false
+    @State private var closeDelayTask: Task<Void, Never>?
     @Environment(BrowserStore.self) private var vault
     @Environment(\.colorScheme) private var interfaceScheme
     private var usesSampleData: Bool { vault.launchScenario != nil }
@@ -22,11 +24,17 @@ struct PaywallView: View {
             paywallBackdrop
             VStack(spacing: 0) {
                 HStack {
-                    IconButton(headingText: "Close", iconName: "xmark", action: dismissHandler)
-                        .foregroundStyle(interfaceScheme == .dark ? Color.white : Color.primary)
-                        .tint(interfaceScheme == .dark ? Color.white : Color.primary)
-                        .frame(width: 44, height: 44)
-                        .accessibilityIdentifier("paywall.close")
+                    ZStack {
+                        Color.clear.frame(width: 44, height: 44)
+                        if closeVisible {
+                            IconButton(headingText: "Close", iconName: "xmark", action: dismissHandler)
+                                .foregroundStyle(interfaceScheme == .dark ? Color.white : Color.primary)
+                                .tint(interfaceScheme == .dark ? Color.white : Color.primary)
+                                .frame(width: 44, height: 44)
+                                .accessibilityIdentifier("paywall.close")
+                                .transition(.opacity)
+                        }
+                    }
                     Spacer()
                     Button("Restore") { Task { await purchase.restoreEntitlements() } }
                         .font(.ui(15, weight: .semibold))
@@ -128,7 +136,17 @@ struct PaywallView: View {
             }
         }
         // runs every time the view shows up
-        .onAppear { PaywallLog.paywallPresented(scenario: vault.launchScenario) }
+        .onAppear {
+            PaywallLog.paywallPresented(scenario: vault.launchScenario)
+            closeVisible = false
+            closeDelayTask?.cancel()
+            closeDelayTask = Task {
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.2)) { closeVisible = true }
+            }
+        }
+        .onDisappear { closeDelayTask?.cancel() }
         .task { if !usesSampleData { await purchase.fetchProducts() } }
         .onChange(of: purchase.entitlementActive) { _, slot in
             if slot {

@@ -289,6 +289,12 @@ struct TabPreviewCard: View {
     @State private var remote: UIImage?
     private var previewStore = TabPreviewStore.singleton
 
+    init(browserTab: BrowserTab, index: Int, gradients: [[Color]]) {
+        self.browserTab = browserTab
+        self.index = index
+        self.gradients = gradients
+    }
+
     var body: some View {
         let snapshot = previewStore.tabThumbnails[browserTab.id]
         ZStack {

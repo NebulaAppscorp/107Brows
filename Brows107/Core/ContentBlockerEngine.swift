@@ -12,7 +12,7 @@ private enum ContentBlockerCatalog: String {
     case trackerList = "blocklist-trackers"
     case redirects = "blocklist-redirects"
 
-    var ruleListName: String { "Brows107.v3." + rawValue }
+    var ruleListName: String { "Brows107.v4." + rawValue }
 }
 
 @MainActor
@@ -37,7 +37,10 @@ enum ContentBlockerEngine {
         if blockTrackers, let list = await ruleList(.trackerList) { controller.add(list) }
         if blockRedirects, let list = await ruleList(.redirects) { controller.add(list) }
         if blockAds || blockTrackers { controller.addUserScript(cosmeticScript) }
-        if blockAds || blockTrackers || blockRedirects { controller.addUserScript(counterScript) }
+        if blockAds || blockTrackers || blockRedirects {
+            controller.addUserScript(
+                counterScript(blockAds: blockAds, blockTrackers: blockTrackers, blockRedirects: blockRedirects))
+        }
     }
 
     // sets up selection appearance
@@ -63,10 +66,7 @@ enum ContentBlockerEngine {
         if let cached = domainCache[named] { return cached }
         var catalogHosts = Set<String>()
         // bail out early if there is nothing to do
-        guard let bundleRulesText = bundleJSON(named: named),
-            let payloadBytes = bundleRulesText.data(using: .utf8),
-            let rules = try? JSONSerialization.jsonObject(with: payloadBytes) as? [[String: Any]]
-        else {
+        guard let rules = sourceRules(named: named) else {
             domainCache[named] = []
             return []
         } 
@@ -97,7 +97,6 @@ enum ContentBlockerEngine {
     }
 
 
-    private static var cachedCounter: WKUserScript?
     private static var selectionAppearanceScript: WKUserScript {
         WKUserScript(
             source: """
@@ -120,14 +119,11 @@ enum ContentBlockerEngine {
     }
 
     // counter script
-    private static var counterScript: WKUserScript {
-        // handle cached counter if it is there
-        if let cachedCounter { return cachedCounter }
-        let counterLists: [String: [String]] = [
-            "ads": Array(domains(named: "blocklist-ads")),
-            "trackers": Array(domains(named: "blocklist-trackers")),
-            "redirects": Array(domains(named: "blocklist-redirects")),
-        ]
+    private static func counterScript(blockAds: Bool, blockTrackers: Bool, blockRedirects: Bool) -> WKUserScript {
+        var counterLists: [String: [String]] = [:]
+        if blockAds { counterLists["ads"] = Array(domains(named: "blocklist-ads")) }
+        if blockTrackers { counterLists["trackers"] = Array(domains(named: "blocklist-trackers")) }
+        if blockRedirects { counterLists["redirects"] = Array(domains(named: "blocklist-redirects")) }
         let payloadBytes = (try? JSONSerialization.data(withJSONObject: counterLists)) ?? Data("{}".utf8)
         let counterPayloadJSON = String(data: payloadBytes, encoding: .utf8) ?? "{}"
         let scriptBody = """
@@ -150,23 +146,41 @@ enum ContentBlockerEngine {
               }
               return'';
             }
-            document.addEventListener('error',function(event){
-              const node=event.target;
-              if(!node||!node.src)return;
-              let host='';
-              try{host=new URL(node.src,location.href).hostname;}catch(e){return;}
-              const matched=kind(host);
+            function record(value){
+              if(!value)return;
+              let parsed;
+              try{parsed=new URL(value,location.href);}catch(e){return;}
+              const matched=kind(parsed.hostname);
               if(!matched)return;
-              const token=matched+'|'+node.src;
+              const token=matched+'|'+parsed.href;
               if(seen.has(token))return;
               seen.add(token);
               try{webkit.messageHandlers.browsProtection.postMessage(matched);}catch(e){}
-            },true);
+            }
+            function inspect(node){
+              if(!node||node.nodeType!==1)return;
+              const tag=node.tagName;
+              const linkResource=tag==='LINK'&&/stylesheet|preload|modulepreload|icon/i.test(node.rel||'');
+              if(!linkResource&&!['IMG','SCRIPT','IFRAME','FRAME','SOURCE','VIDEO','AUDIO','TRACK','EMBED','OBJECT'].includes(tag))return;
+              const value=node.currentSrc||node.src||node.href||node.poster||node.data||node.getAttribute('src')||node.getAttribute('href')||node.getAttribute('poster')||node.getAttribute('data');
+              record(value);
+            }
+            function scan(root){
+              if(!root)return;
+              if(root.nodeType===1)inspect(root);
+              if(root.querySelectorAll)root.querySelectorAll('img[src],script[src],iframe[src],frame[src],source[src],video[poster],audio[src],track[src],embed[src],object[data],link[href]').forEach(inspect);
+            }
+            document.addEventListener('error',function(event){if(event.target)inspect(event.target);},true);
+            scan(document);
+            new MutationObserver(records=>{
+              for(const change of records){
+                if(change.type==='attributes')inspect(change.target);
+                for(const node of change.addedNodes)scan(node);
+              }
+            }).observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['src','href','poster','data']});
             })();
             """
-        let counterUserScript = WKUserScript(source: scriptBody, injectionTime: .atDocumentStart, forMainFrameOnly: true)
-        cachedCounter = counterUserScript
-        return counterUserScript
+        return WKUserScript(source: scriptBody, injectionTime: .atDocumentStart, forMainFrameOnly: false)
     }
 
     // Compile the lists at launch so the first page load is not blocked.
@@ -225,34 +239,42 @@ enum ContentBlockerEngine {
 
     // bundle json
     private static func bundleJSON(named: String) -> String? {
+        guard let rules = sourceRules(named: named) else { return nil }
+        var compiledRules: [[String: Any]] = []
+        for rule in rules {
+            guard var trigger = rule["trigger"] as? [String: Any],
+                let action = rule["action"] as? [String: Any],
+                let domains = trigger["if-domain"] as? [String],
+                !domains.isEmpty
+            else { continue }
+            trigger.removeValue(forKey: "if-domain")
+            trigger["url-filter"] = urlFilter(for: domains)
+            compiledRules.append(["trigger": trigger, "action": action])
+        }
+        guard let payloadBytes = try? JSONSerialization.data(withJSONObject: compiledRules),
+            let sanitizedRulesJSON = String(data: payloadBytes, encoding: .utf8)
+        else { return nil }
+        return sanitizedRulesJSON
+    }
+
+    private static func sourceRules(named: String) -> [[String: Any]]? {
         guard
             let linkURL = Bundle.main.url(forResource: named, withExtension: "json", subdirectory: "Blocklists")
                 ?? Bundle.main.url(forResource: named, withExtension: "json"),
             let payloadBytes = try? Data(contentsOf: linkURL),
             payloadBytes.count <= 6_000_000
         else { return nil }
-        // Need rules to go on
-        guard let rules = try? JSONSerialization.jsonObject(with: payloadBytes) as? [[String: Any]] else { return nil }
-        var sanitized: [[String: Any]] = []
-        // Per-rule work
-        for rule in rules {
-            guard var trigger = rule["trigger"] as? [String: Any],
-                let action = rule["action"] as? [String: Any],
-                let domains = trigger["if-domain"] as? [String]
-            else { continue }
-            let eligibleHosts = domains.filter { host in
-                let bare = host.hasPrefix("*") ? String(host.dropFirst()) : host
-                return !isPageSafelisted(bare) 
-            }
-            guard !eligibleHosts.isEmpty else { continue }
-            trigger["if-domain"] = eligibleHosts
-            sanitized.append(["trigger": trigger, "action": action])
-        }  
-        // no payload bytes, no point continuing
-        guard let payloadBytes = try? JSONSerialization.data(withJSONObject: sanitized),
-            let sanitizedRulesJSON = String(data: payloadBytes, encoding: .utf8)    
-        else { return nil }
-        return sanitizedRulesJSON
+        return try? JSONSerialization.jsonObject(with: payloadBytes) as? [[String: Any]]
+    }
+
+    private static func urlFilter(for domains: [String]) -> String {
+        let escapedDomains = domains.compactMap { value -> String? in
+            let host = value.hasPrefix("*") ? String(value.dropFirst()) : value
+            let normalized = host.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+            guard !normalized.isEmpty else { return nil }
+            return NSRegularExpression.escapedPattern(for: normalized)
+        }
+        return "^https?://(?:[A-Za-z0-9-]+\\.)*(?:\(escapedDomains.joined(separator: "|")))(?::[0-9]+)?(?:[/?#]|$)"
     }
 
     private static var cosmeticScript: WKUserScript {

@@ -76,10 +76,14 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
         hostName.isInspectable = false
         isScrolled = false
         pageSurfaces[tab.id] = hostName
-        refreshShieldScripts(hostName)
         if let linkURL = tab.pageURL {
             appliedLoadRevision[tab.id] = tab.reloadToken
-            applyURLToWebView(linkURL, in: hostName)
+            refreshShieldScripts(hostName) { [weak self, weak hostName] in
+                guard let self, let hostName, self.pageSurfaces[tab.id] === hostName else { return }
+                self.applyURLToWebView(linkURL, in: hostName)
+            }
+        } else {
+            refreshShieldScripts(hostName)
         }
         refreshNavigationState(from: hostName)
         return hostName
@@ -128,8 +132,11 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
     }
 
     // Re-applies the blocking rules after settings change.
-    func refreshShieldScripts(_ hostName: WKWebView? = nil) {
-        guard let vaultRef else { return }    
+    func refreshShieldScripts(_ hostName: WKWebView? = nil, completion: (() -> Void)? = nil) {
+        guard let vaultRef else {
+            completion?()
+            return
+        }
         let webViewBatch = hostName.map { [$0] } ?? Array(pageSurfaces.values)    
         let blockAds = vaultRef.shieldAds
         let blockTrackers = vaultRef.shieldTrackers
@@ -147,6 +154,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKDownload
                     shieldEngaged: shieldEngaged
                 )
             }
+            completion?()
         }
     }
 

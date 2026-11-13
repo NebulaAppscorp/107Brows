@@ -78,7 +78,6 @@ struct DocumentView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu("Document actions", systemImage: "ellipsis") {
-                        Button("Open PDF", systemImage: "folder") { filePickerPresented = true }
                         Button("Downloaded PDFs", systemImage: "arrow.down.doc") { presentedSheet = .pdfHistory }
                         if let loadedPdf {
                             Button("Thumbnails", systemImage: "square.grid.2x2") { thumbRailVisible.toggle() }
@@ -169,7 +168,9 @@ struct DocumentView: View {
                 case .ai:
                     DocumentAIView(
                         fullDocumentText: loadedPdf?.string ?? "",
-                        pageText: loadedPdf?.page(at: visiblePageIndex - 1)?.string ?? "")
+                        pageText: loadedPdf?.page(at: visiblePageIndex - 1)?.string ?? "",
+                        documentTitle: navCaption,
+                        pageCount: loadedPdf?.pageCount ?? 0)
                 case .pdfHistory:
                     DownloadsView(pdfOnly: true)
                 }
