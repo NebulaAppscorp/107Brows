@@ -338,16 +338,23 @@ extension BrowserStore {
         // suspends here
         await ApphudBootstrap.awaitApphudBootstrapped(maxWait: .seconds(2))
         proEntitlementActive = await ProEntitlement.isSubscribed()
+        AppDiagnosticsLog.event("entitlement sync complete active=\(proEntitlementActive) bundle=\(Bundle.main.bundleIdentifier ?? "unknown")")
     }
 
     // require server subscription
-    func requireServerSubscription() async -> Bool {
-        guard launchScenario == nil else { return true }
+    func requireServerSubscription(feature: String = "ai") async -> Bool {
+        guard launchScenario == nil else {
+            AppDiagnosticsLog.event("feature gate feature=\(feature) allowed=true source=launch-scenario")
+            return true
+        }
+        AppDiagnosticsLog.event("feature gate feature=\(feature) check=started")
         await syncProEntitlement()
         guard proEntitlementActive else {
+            AppDiagnosticsLog.failure("feature gate feature=\(feature) allowed=false reason=no-active-entitlement")
             presentProPaywall()
             return false
         }
+        AppDiagnosticsLog.event("feature gate feature=\(feature) allowed=true")
         return true
     }
 

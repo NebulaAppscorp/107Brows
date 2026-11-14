@@ -18,6 +18,8 @@ private enum ContentBlockerCatalog: String {
 @MainActor
 enum ContentBlockerEngine {
     private static var ruleStore: WKContentRuleListStore { WKContentRuleListStore.default() }
+    private static var resolvedRuleLists: [String: WKContentRuleList] = [:]
+    private static var pendingRuleLists: [String: Task<WKContentRuleList?, Never>] = [:]
 
 
     // Attaches the enabled rule lists to a web view.
@@ -33,9 +35,13 @@ enum ContentBlockerEngine {
         controller.addUserScript(selectionAppearanceScript)
         guard shieldEngaged else { return }
 
-        if blockAds, let list = await ruleList(.ads) { controller.add(list) }
-        if blockTrackers, let list = await ruleList(.trackerList) { controller.add(list) }
-        if blockRedirects, let list = await ruleList(.redirects) { controller.add(list) }
+        async let adsTask: WKContentRuleList? = blockAds ? ruleList(.ads) : nil
+        async let trackersTask: WKContentRuleList? = blockTrackers ? ruleList(.trackerList) : nil
+        async let redirectsTask: WKContentRuleList? = blockRedirects ? ruleList(.redirects) : nil
+        let (adsList, trackersList, redirectsList) = await (adsTask, trackersTask, redirectsTask)
+        if let adsList { controller.add(adsList) }
+        if let trackersList { controller.add(trackersList) }
+        if let redirectsList { controller.add(redirectsList) }
         if blockAds || blockTrackers { controller.addUserScript(cosmeticScript) }
         if blockAds || blockTrackers || blockRedirects {
             controller.addUserScript(
@@ -194,11 +200,19 @@ enum ContentBlockerEngine {
     }
 
     private static func ruleList(_ catalog: ContentBlockerCatalog) async -> WKContentRuleList? {
-        // handle cached if it is there
-        if let cached = await cachedRuleList(catalog.ruleListName) { return cached }
-        // Bundle rules text must exist here
-        guard let bundleRulesText = bundleJSON(named: catalog.rawValue) else { return nil }
-        return await compileRuleList(bundleRulesText, ruleListName: catalog.ruleListName)
+        let ruleListName = catalog.ruleListName
+        if let ready = resolvedRuleLists[ruleListName] { return ready }
+        if let pending = pendingRuleLists[ruleListName] { return await pending.value }
+        let task = Task<WKContentRuleList?, Never> { @MainActor in
+            if let cached = await cachedRuleList(ruleListName) { return cached }
+            guard let bundleRulesText = bundleJSON(named: catalog.rawValue) else { return nil }
+            return await compileRuleList(bundleRulesText, ruleListName: ruleListName)
+        }
+        pendingRuleLists[ruleListName] = task
+        let resolved = await task.value
+        pendingRuleLists[ruleListName] = nil
+        if let resolved { resolvedRuleLists[ruleListName] = resolved }
+        return resolved
     }
 
     // cached rule list

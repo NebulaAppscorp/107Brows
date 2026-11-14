@@ -515,13 +515,8 @@ extension BrowserRootView {
                 BrowserMenuAction(
                     headingText: "Reader", menuGlyph: "doc.plaintext",
                     action: {
-                        // detached from the call site on purpose
                         Task {
-                            if vault.launchScenario != nil {
-                                webLane.pageText = SampleContent.readerBody
-                            } else {
-                                _ = await webLane.harvestReadableText()
-                            }
+                            _ = await webLane.harvestReadableText()
                             webLane.readerActive = true
                             vault.modalLane = nil
                         }
@@ -625,7 +620,9 @@ extension BrowserRootView {
         if let tab = vault.currentTab, tab.pageURL != nil {
             ZStack {
                 if webLane.readerActive {
-                    ReaderChromeView(headingText: tab.pageTitle) { webLane.readerActive = false }
+                    ReaderChromeView(headingText: tab.pageTitle, pageText: webLane.pageText) {
+                        webLane.readerActive = false
+                    }
                 } else if vault.launchScenario != nil,
                     ![
                         "live", "find-live", "find-live-no-keyboard", "xcom", "xcom-unshielded", "page-scroll", "page-offline",

@@ -11,20 +11,38 @@ import StoreKit
 enum ProEntitlement {
     @MainActor
     static func isSubscribed() async -> Bool {
-        // Apphud knows first, it caches the last receipt validation
-        if Apphud.hasActiveSubscription() { return true }
-        // fall back to StoreKit in case Apphud has not synced yet
+        let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
+        if !ApphudBootstrap.isRunningAlternateBundle {
+            let apphudActive = Apphud.hasActiveSubscription()
+            AppDiagnosticsLog.event("entitlement source=apphud active=\(apphudActive) bundle=\(bundleID)")
+            if apphudActive { return true }
+        } else {
+            AppDiagnosticsLog.event("entitlement source=apphud skipped bundle=\(bundleID)")
+        }
+
+        var inspected = 0
+        var hasActiveStoreKitEntitlement = false
         for await entitlementEvent in Transaction.currentEntitlements {
-            if case .verified(let transaction) = entitlementEvent,
-                transaction.revocationDate == nil,
-                transaction.productType == .autoRenewable,
-                transaction.expirationDate.map({ $0 > Date() }) ?? true
-            {
-                // verified, not revoked, auto-renewable and not expired
-                return true
+            inspected += 1
+            switch entitlementEvent {
+            case .verified(let transaction):
+                let notRevoked = transaction.revocationDate == nil
+                let notExpired = transaction.expirationDate.map { $0 > Date() } ?? true
+                let isSubscription = transaction.productType == .autoRenewable
+                let isActive = notRevoked && notExpired && isSubscription
+                AppDiagnosticsLog.event(
+                    "entitlement source=storekit verified=true product=\(transaction.productID) type=\(transaction.productType) revoked=\(!notRevoked) expired=\(!notExpired) active=\(isActive)"
+                )
+                hasActiveStoreKitEntitlement = hasActiveStoreKitEntitlement || isActive
+            case .unverified(let transaction, _):
+                AppDiagnosticsLog.failure(
+                    "entitlement source=storekit verified=false product=\(transaction.productID)"
+                )
             }
         }
-        // nothing active
-        return false
+        AppDiagnosticsLog.event(
+            "entitlement result active=\(hasActiveStoreKitEntitlement) source=storekit inspected=\(inspected) bundle=\(bundleID)"
+        )
+        return hasActiveStoreKitEntitlement
     }
 }

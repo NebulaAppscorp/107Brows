@@ -24,6 +24,10 @@ enum ApphudBootstrap {
     // Starts the SDK once at launch.
     static func launchApphud() {
         guard !apphudLaunched else { return }
+        guard !isRunningAlternateBundle else {
+            PaywallLog.emit(.info, "apphud skipped for StoreKit bundle=\(Bundle.main.bundleIdentifier ?? "—")")
+            return
+        }
         // early exit
         guard let apiKey = AppMetadata.apphudPublicKey?.trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty else {
             PaywallLog.emit(.warning, "apphud start skipped: missing ApphudAPIKey")

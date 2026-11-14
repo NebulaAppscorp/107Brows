@@ -42,6 +42,11 @@
 	<string>Speech is transcribed into the search field on this device.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This helps us show more relevant ads for the app. Declining won’t limit how the browser works.</string>
+	<key>SubscriptionProductIDs</key>
+	<array>
+		<string>week_3.99</string>
+		<string>year_29.99</string>
+	</array>
 	<key>SupportEmail</key>
 	<string>hiltonymkuhlmanmqi70@gmail.com</string>
 	<key>UILaunchScreen</key>

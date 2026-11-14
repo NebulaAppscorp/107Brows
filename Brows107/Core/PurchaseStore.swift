@@ -56,13 +56,14 @@ import StoreKit
         let placementKey = AppMetadata.apphudPaywallPlacementID
         PaywallLog.fetchStarted(placementID: placementKey)
         // suspends here
-        await ApphudBootstrap.awaitApphudBootstrapped()
-        PaywallLog.apphudBootstrapped(
-            started: ApphudBootstrap.apphudUserID() != "",
-            userRef: ApphudBootstrap.apphudUserID()
-        )
-        // suspends here
-        await loadFromApphud()
+        if !ApphudBootstrap.isRunningAlternateBundle {
+            await ApphudBootstrap.awaitApphudBootstrapped()
+            PaywallLog.apphudBootstrapped(
+                started: ApphudBootstrap.apphudUserID() != "",
+                userRef: ApphudBootstrap.apphudUserID()
+            )
+            await loadFromApphud()
+        }
         if storeKitOffers.isEmpty, ApphudBootstrap.isRunningAlternateBundle || storeKitFallbackEligible {
             // suspends here 
             await loadFromStoreKitConfiguration()
@@ -179,9 +180,15 @@ extension PurchaseStore {
             checkoutNotice = "Plans are not available right now. Please try again later."
             return
         }
+        AppDiagnosticsLog.event(
+            "purchase route=\(ApphudBootstrap.isRunningAlternateBundle ? "storekit" : "apphud-or-storekit") product=\(chosenProduct.id) bundle=\(Bundle.main.bundleIdentifier ?? "unknown")"
+        )
         busy = true
         defer { busy = false }
-        if let apphudProduct = apphudProductBySKU[chosenProduct.id], !storeKitFallback {
+        if let apphudProduct = apphudProductBySKU[chosenProduct.id],
+            !storeKitFallback,
+            !ApphudBootstrap.isRunningAlternateBundle
+        {
             PaywallLog.purchaseStarted(productID: chosenProduct.id, viaApphud: true)
             // suspends here until the result is back
             let apphudOutcome = await Apphud.purchase(apphudProduct)
@@ -203,6 +210,11 @@ extension PurchaseStore {
                 if case .verified(let transaction) = verificationPayload {
                     await transaction.finish()
                     entitlementActive = true
+                    AppDiagnosticsLog.event(
+                        "purchase transaction verified product=\(transaction.productID) type=\(transaction.productType) expires=\(transaction.expirationDate != nil)"
+                    )
+                    let entitlementNow = await ProEntitlement.isSubscribed()
+                    AppDiagnosticsLog.event("purchase entitlement-after-transaction active=\(entitlementNow)")
                     PaywallLog.purchaseOutcome(success: true, detail: "storekit verified")
                 } else {
                     checkoutNotice = "The purchase could not be verified."
@@ -228,11 +240,15 @@ extension PurchaseStore {
         guard !busy else { return }
         busy = true
         defer { busy = false }
-        do { 
+        do {
             // Wait for it before moving on
+            AppDiagnosticsLog.event("purchase restore started bundle=\(Bundle.main.bundleIdentifier ?? "unknown")")
             try await AppStore.sync()
-            _ = await Apphud.restorePurchases()
+            if !ApphudBootstrap.isRunningAlternateBundle {
+                _ = await Apphud.restorePurchases()
+            }
             let isActive = await ProEntitlement.isSubscribed()
+            AppDiagnosticsLog.event("purchase restore entitlement active=\(isActive)")
             if isActive {
                 entitlementActive = true
                 PaywallLog.restoreOutcome(active: true, detail: "entitlement found")

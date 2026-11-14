@@ -12,7 +12,9 @@ import UIKit
 /// Reader mode controls.
 struct ReaderChromeView: View {
     var headingText: String
+    var pageText: String
     var onShowOriginal: () -> Void
+    @State private var bodyFontSize: CGFloat = 18
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,9 +24,29 @@ struct ReaderChromeView: View {
                     .foregroundStyle(Palette.mutedLabel)
                 Spacer()
                 HStack(spacing: 18) {
-                    Image(systemName: "textformat.size")
-                        .font(.ui(17))
-                        .foregroundStyle(.primary)
+                    Menu {
+                        Button {
+                            bodyFontSize = max(14, bodyFontSize - 2)
+                        } label: {
+                            Label("Smaller Text", systemImage: "textformat.size.smaller")
+                        }
+                        Button {
+                            bodyFontSize = 18
+                        } label: {
+                            Label("Default Text Size", systemImage: "textformat")
+                        }
+                        Button {
+                            bodyFontSize = min(30, bodyFontSize + 2)
+                        } label: {
+                            Label("Larger Text", systemImage: "textformat.size.larger")
+                        }
+                    } label: {
+                        Image(systemName: "textformat.size")
+                            .font(.ui(17))
+                            .foregroundStyle(.primary)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
+                    }
                     Button("Show original", action: onShowOriginal)
                         .font(.ui(15, weight: .semibold))
                         .foregroundStyle(Palette.brandInk)
@@ -39,72 +61,26 @@ struct ReaderChromeView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("How to brew coffee at home")
+                    Text(headingText.isEmpty ? "Reader" : headingText)
                         .font(.ui(30, weight: .semibold))
                         .tracking(-0.45)
                         .lineSpacing(6)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 36)
-                    Text("Maria Lopez  ·  Aug 12, 2026  ·  6 min read")
-                        .font(.ui(15))
-                        .foregroundStyle(Palette.mutedLabel)
-                        .padding(.top, 12)
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Palette.rgb(0xedf1ef), Palette.rgb(0xb9c7c1), Palette.rgb(0x6f837b)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(height: 188)
-                        .padding(.top, 22) 
-                    Text(
-                        "Good coffee is mostly about four things: water, ratio, grind and time. Get those right and almost any bean will taste better than it did yesterday."
-                    )
-                    .font(.ui(17))
-                    .tracking(-0.41)
-                    .lineSpacing(6)
-                    .padding(.top, 22)
-                    Text("Water temperature")
-                        .font(.ui(22, weight: .semibold))
-                        .tracking(-0.176)
-                        .padding(.top, 24)
-                    Text(
-                        "The ideal range is between 195° and 205° F. Above that the coffee turns bitter, below that it tastes thin and sour."
-                    )
-                    .font(.ui(17))
-                    .tracking(-0.41)
-                    .lineSpacing(6)
-                    .padding(.top, 10)
-                    VStack(alignment: .leading, spacing: 12) {
-                        readerBullet("Boil, then wait 30 seconds before pouring")
-                        readerBullet("Preheat the brewer so it doesn’t steal heat")
-                        readerBullet("Use filtered water — it changes more than the bean")
+                        .padding(.bottom, 18)
+                    if pageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("This page doesn’t contain readable text.")
+                            .font(.system(size: bodyFontSize))
+                            .foregroundStyle(Palette.mutedLabel)
+                    } else {
+                        Text(pageText)
+                            .font(.system(size: bodyFontSize))
+                            .tracking(-0.3)
+                            .lineSpacing(bodyFontSize * 0.35)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.top, 14)
-                    HStack(alignment: .top, spacing: 14) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Palette.brandInk)
-                            .frame(width: 3, height: 81)
-                        Text("Start at 1 : 16 — sixty grams of coffee per litre of water — and adjust from there.")
-                            .font(.ui(17))
-                            .tracking(-0.41)
-                            .lineSpacing(6)
-                    }
-                    .padding(.top, 16)
-                    Text("Grind size")
-                        .font(.ui(22, weight: .semibold))
-                        .tracking(-0.176)
-                        .padding(.top, 24)
-                    Text(
-                        "Grind size controls how fast water passes through the bed. Too fine and the cup is harsh; too coarse and it tastes thin. A burr grinder produces an even particle size, which is why the result repeats from cup to cup."
-                    )
-                    .font(.ui(18))
-                    .tracking(-0.43)
-                    .lineSpacing(6)
-                    .padding(.top, 10)
                 }
                 .padding(.horizontal, 26)
                 .padding(.bottom, 120)
@@ -113,15 +89,6 @@ struct ReaderChromeView: View {
             }
         }
         .background(Palette.readerChrome.ignoresSafeArea())
-    }
-
-
-    // reader bullet
-    private func readerBullet(_ draftText: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle().fill(Palette.brandInk).frame(width: 6, height: 6).padding(.top, 10)
-            Text(draftText).font(.ui(17)).tracking(-0.41).lineSpacing(6)
-        }
     }
 }
 

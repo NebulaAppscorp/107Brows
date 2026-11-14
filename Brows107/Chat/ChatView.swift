@@ -172,9 +172,12 @@ struct ChatView: View {
                             .padding(.trailing, 16)
                             // Fixed size from the design
                             .frame(height: 40)
-                            .background(Palette.composerChip, in: Capsule())
-                            .shadow(color: Palette.rgb(0x002417).opacity(interfaceScheme == .dark ? 0 : 0.1), radius: 3, y: 2)
-                            .shadow(color: Palette.rgb(0x002417).opacity(interfaceScheme == .dark ? 0 : 0.06), radius: 9, y: 8) 
+                            .background {
+                                Capsule()
+                                    .fill(Palette.composerChip)
+                                    .shadow(color: Color.black.opacity(0.075), radius: 1.5, x: 0, y: 1)
+                            }
+                            .overlay(Capsule().stroke(Color.primary.opacity(0.045), lineWidth: 0.5))
                         }
                         .buttonStyle(.plain)
                     }
@@ -187,6 +190,7 @@ struct ChatView: View {
             .scrollContentBackground(.hidden)
             // background goes behind everything
             .background(Color.clear)
+            .browsScrollEdgeEffectHidden()
             if let attachedBitmap = vault.attachedPhoto {
                 HStack {  
                     ZStack(alignment: .topTrailing) {
@@ -285,8 +289,12 @@ extension ChatView {
             .padding(.trailing, 16)
             .frame(height: 40)
             .fixedSize(horizontal: true, vertical: false)
-            .background(Palette.canvasView, in: Capsule())
-            .shadow(color: (interfaceScheme == .dark ? Color.white : Color.black).opacity(0.08), radius: 3, y: 1)
+            .background {
+                Capsule()
+                    .fill(Palette.canvasView)
+                    .shadow(color: Color.black.opacity(0.075), radius: 1.5, x: 0, y: 1)
+            }
+            .overlay(Capsule().stroke(Color.primary.opacity(0.045), lineWidth: 0.5))
         }
         if headingText == "Think" {
             button.buttonStyle(.plain).contextMenu {

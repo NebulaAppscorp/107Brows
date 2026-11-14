@@ -93,6 +93,27 @@ enum PaywallLog {
     }
 }
 
+enum AppDiagnosticsLog {
+    private static let log = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? AppMetadata.shippingBundleID,
+        category: "Diagnostics"
+    )
+
+    static func event(_ message: String) {
+        log.info("[107Diagnostics] \(message, privacy: .public)")
+        #if DEBUG
+            print("[107Diagnostics] \(message)")
+        #endif
+    }
+
+    static func failure(_ message: String) {
+        log.error("[107Diagnostics] \(message, privacy: .public)")
+        #if DEBUG
+            print("[107Diagnostics] ERROR \(message)")
+        #endif
+    }
+}
+
 
 /// Sleeps get interrupted when a task is cancelled; nothing to recover, just leave a trace in debug builds.
 func logSwallowed(_ error: Error, file: StaticString = #fileID) {

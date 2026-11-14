@@ -722,11 +722,20 @@ extension PhotoSearchView {
 
     // search
     private func search() {
-        guard !visualSearchBusy, let shot = pickedFrame else { return }
+        guard !visualSearchBusy else {
+            AppDiagnosticsLog.event("photo-search ignored reason=already-running")
+            return
+        }
+        guard let shot = pickedFrame else {
+            AppDiagnosticsLog.failure("photo-search ignored reason=no-selected-image")
+            return
+        }
         guard !vault.incognito else {
+            AppDiagnosticsLog.event("photo-search blocked reason=private-mode")
             vault.bannerText = "Photo search is off in private mode."
             return
         }
+        AppDiagnosticsLog.event("photo-search started source=selected-photo question-present=\(!photoQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)")
         visualSearchBusy = true
         visualSearchFlight = Task {
             // Suspends here
@@ -758,9 +767,19 @@ extension PhotoSearchView {
         startCamera()
     }
 
-    private func performSearch(for shot: UIImage, question: String? = nil) async {  
+    private func performSearch(for shot: UIImage, question: String? = nil) async {
         defer { visualSearchBusy = false }
-        guard await vault.requireServerSubscription(), !Task.isCancelled else { return }
+        AppDiagnosticsLog.event(
+            "photo-search prepare width=\(shot.cgImage?.width ?? 0) height=\(shot.cgImage?.height ?? 0) bundle=\(Bundle.main.bundleIdentifier ?? "unknown")"
+        )
+        guard await vault.requireServerSubscription(feature: "photo-search") else {
+            AppDiagnosticsLog.failure("photo-search stopped reason=subscription-gate")
+            return
+        }
+        guard !Task.isCancelled else {
+            AppDiagnosticsLog.event("photo-search stopped reason=cancelled-before-upload")
+            return
+        }
         let historyID = currentPhotoHistoryID ?? UUID()
         currentPhotoHistoryID = historyID
         let questionContext = question ?? photoQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -783,10 +802,19 @@ extension PhotoSearchView {
         let payloadBytes = await Task.detached(priority: .userInitiated) { PhotoSearchJPEG.data(from: rasterEnvelope.bitmap) }
             .value
         // no payload bytes, no point continuing
-        guard let payloadBytes, payloadBytes.count <= 5_242_880 else {
+        guard let payloadBytes else {
+            AppDiagnosticsLog.failure("photo-search stopped reason=jpeg-encoding-failed")
+            vault.bannerText = APIError.invalidResponse.localizedDescription
+            return
+        }
+        guard payloadBytes.count <= 5_242_880 else {
+            AppDiagnosticsLog.failure("photo-search stopped reason=image-too-large bytes=\(payloadBytes.count)")
             vault.bannerText = APIError.tooLarge.localizedDescription
             return
         }
+        AppDiagnosticsLog.event(
+            "photo-search upload bytes=\(payloadBytes.count) question-present=\(!questionContext.isEmpty) question-length=\(questionContext.count) web-search=true"
+        )
         do {
             let client = vault.aiService
             hasUserQuestion = !questionContext.isEmpty
@@ -810,7 +838,13 @@ extension PhotoSearchView {
                 webLookupEnabled: true,
                 think: false
             )
-            guard !Task.isCancelled else { return }
+            AppDiagnosticsLog.event(
+                "photo-search response chat=\(reply.remoteChatID.suffix(8)) answer-characters=\(reply.assistantBody.count) citations=\(reply.referenceMarks?.count ?? 0)"
+            )
+            guard !Task.isCancelled else {
+                AppDiagnosticsLog.event("photo-search stopped reason=cancelled-after-response")
+                return
+            }
             var answer = PhotoSearchJPEG.cleanVisualAnswer(reply.assistantBody)
             visualAnswer = answer
             if answer.isEmpty || answer.uppercased().contains("UNREADABLE") {
@@ -836,20 +870,29 @@ extension PhotoSearchView {
             visualHits = found
             searchState = found.isEmpty ? .empty : .results
             matchesVisible = true
+            AppDiagnosticsLog.event(
+                "photo-search completed state=\(searchState.rawValue) candidate-pages=\(candidatePages.count) relevant-pages=\(relevantPages.count) verified-pages=\(checkedPages.count) displayed-matches=\(found.count)"
+            )
             // wait for it before moving on
             await RecentPhotoStore.savePhotoResult(
                 shot, id: historyID, question: questionContext, answer: answer, pages: deduplicated, phase: searchState)
             requestStoreReview()
         } catch is CancellationError {
+            AppDiagnosticsLog.event("photo-search cancelled")
         } catch let error as APIError where error == .network {
             guard !Task.isCancelled else { return }
+            AppDiagnosticsLog.failure("photo-search failed api-error=network")
             visualHits = []
             searchState = .offline
             matchesVisible = true
             // Wait for it before moving on
             await RecentPhotoStore.savePhotoResult(
                 shot, id: historyID, question: questionContext, answer: nil, pages: [], phase: .offline)
+        } catch let error as APIError {
+            AppDiagnosticsLog.failure("photo-search failed api-error=\(error) description=\(error.localizedDescription)")
+            if !Task.isCancelled { vault.bannerText = error.localizedDescription }
         } catch {
+            AppDiagnosticsLog.failure("photo-search failed error=\(error.localizedDescription)")
             if !Task.isCancelled { vault.bannerText = error.localizedDescription }
         }
     }

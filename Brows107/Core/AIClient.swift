@@ -167,10 +167,22 @@ actor AIClient: AIService {
             outboundRequest.httpBody = try JSONEncoder().encode(jsonEnvelope)
             outboundRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        let assistantPayload: AIReply = try await performDecoded(outboundRequest)
+        let flow = photoJPEG == nil ? "chat" : "photo-search"
+        AppDiagnosticsLog.event(
+            "api request flow=\(flow) host=\(outboundRequest.url?.host ?? "unknown") method=POST attachment-bytes=\(photoJPEG?.count ?? 0) web-search=\(webLookupEnabled)"
+        )
+        let assistantPayload: AIReply = try await performDecoded(
+            outboundRequest,
+            flow: flow,
+            traceID: String(remoteChatID.suffix(8))
+        )
         guard !assistantPayload.assistantBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            AppDiagnosticsLog.failure("api response flow=\(flow) chat=\(remoteChatID.suffix(8)) empty-answer=true")
             throw APIError.invalidResponse
         }
+        AppDiagnosticsLog.event(
+            "api response flow=\(flow) chat=\(remoteChatID.suffix(8)) answer-characters=\(assistantPayload.assistantBody.count) citations=\(assistantPayload.referenceMarks?.count ?? 0)"
+        )
         return assistantPayload
     }
 
@@ -247,13 +259,21 @@ actor AIClient: AIService {
 
 
     // Runs the request and decodes the JSON, mapping failures to APIError.
-    private func performDecoded<T: Decodable & Sendable>(_ outboundRequest: URLRequest) async throws -> T {
+    private func performDecoded<T: Decodable & Sendable>(
+        _ outboundRequest: URLRequest, flow: String = "api", traceID: String? = nil
+    ) async throws -> T {
         do {
             try Task.checkCancellation()
             let (payloadBytes, response) = try await urlPipeline.data(for: outboundRequest)
             try Task.checkCancellation()
-            guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            guard let http = response as? HTTPURLResponse else {
+                AppDiagnosticsLog.failure("api response flow=\(flow) trace=\(traceID ?? "—") invalid-http-response=true")
+                throw APIError.invalidResponse
+            }
             let statusValue = http.statusCode
+            AppDiagnosticsLog.event(
+                "api response flow=\(flow) trace=\(traceID ?? "—") status=\(statusValue) bytes=\(payloadBytes.count)"
+            )
             if (200..<300).contains(statusValue) {
                 // ok
             } else if statusValue == 401 || statusValue == 403 {
@@ -267,19 +287,32 @@ actor AIClient: AIService {
             } else {
                 throw APIError.unavailable
             }
-            guard payloadBytes.count <= 10_000_000, let decodedPayload = try? JSONDecoder().decode(T.self, from: payloadBytes)
-            else { throw APIError.invalidResponse }
+            guard payloadBytes.count <= 10_000_000 else {
+                AppDiagnosticsLog.failure("api decode flow=\(flow) trace=\(traceID ?? "—") reason=response-too-large bytes=\(payloadBytes.count)")
+                throw APIError.invalidResponse
+            }
+            guard let decodedPayload = try? JSONDecoder().decode(T.self, from: payloadBytes) else {
+                AppDiagnosticsLog.failure("api decode flow=\(flow) trace=\(traceID ?? "—") reason=json-decode-failed")
+                throw APIError.invalidResponse
+            }
             return decodedPayload
         } catch is CancellationError { throw CancellationError() } catch let error as URLError where error.code == .cancelled {
             throw CancellationError()
-        } catch let error as APIError { throw error } catch let error as URLError {
+        } catch let error as APIError {
+            AppDiagnosticsLog.failure("api failure flow=\(flow) trace=\(traceID ?? "—") error=\(error)")
+            throw error
+        } catch let error as URLError {
+            AppDiagnosticsLog.failure("api network flow=\(flow) trace=\(traceID ?? "—") url-error=\(error.code.rawValue)")
             switch error.code {
             case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff:
                 throw APIError.network
             default:
                 throw APIError.unavailable
             }
-        } catch { throw APIError.unavailable }
+        } catch {
+            AppDiagnosticsLog.failure("api failure flow=\(flow) trace=\(traceID ?? "—") unexpected-type=\(String(reflecting: type(of: error)))")
+            throw APIError.unavailable
+        }
     }
 }
 
