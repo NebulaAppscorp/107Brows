@@ -76,8 +76,9 @@ extension PageLoadError {
             NSURLErrorSecureConnectionFailed:
             return .notResponding(siteLabel: siteCaption)
         case NSURLErrorCannotFindHost,
-            NSURLErrorDNSLookupFailed,
-            NSURLErrorBadURL,
+            NSURLErrorDNSLookupFailed:
+            return .offline
+        case NSURLErrorBadURL,
             NSURLErrorUnsupportedURL,
             NSURLErrorFileDoesNotExist:
             return .notFound(siteLabel: siteCaption)
