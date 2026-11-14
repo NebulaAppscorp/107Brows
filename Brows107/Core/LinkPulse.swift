@@ -25,7 +25,18 @@ final class LinkPulse: Sendable {
         let flag = satisfiedFlag
         self.pathProbe.pathUpdateHandler = { path in
             let pathLive = path.status == .satisfied
-            flag.withLock { $0 = pathLive }
+            let changed = flag.withLock { currentValue -> Bool in
+                guard currentValue != pathLive else { return false }
+                currentValue = pathLive
+                return true
+            }
+            guard changed else { return }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .linkPulseConnectivityChanged,
+                    object: nil,
+                    userInfo: ["linkSatisfied": pathLive])
+            }
         }
         self.pathProbe.start(queue: DispatchQueue(label: "com.brows107.link-pulse"))
     }
@@ -34,4 +45,8 @@ final class LinkPulse: Sendable {
 extension LinkPulse {
     // reads nicer at call sites than !linkSatisfied
     var linkSevered: Bool { !linkSatisfied }
+}
+
+extension Notification.Name {
+    static let linkPulseConnectivityChanged = Notification.Name("linkPulseConnectivityChanged")
 }

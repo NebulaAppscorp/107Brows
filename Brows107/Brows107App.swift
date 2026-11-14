@@ -141,16 +141,39 @@ struct AppRootView: View {
         }
         .animation(.snappy(duration: 0.24), value: vault.copyToastVisible)
         .animation(.smooth(duration: 0.38), value: vault.paywallUp)
+        .onReceive(NotificationCenter.default.publisher(for: .linkPulseConnectivityChanged)) { notification in
+            guard let linkSatisfied = notification.userInfo?["linkSatisfied"] as? Bool,
+                !linkSatisfied,
+                vault.launchScenario == nil,
+                !welcomeGate,
+                !vault.paywallUp
+            else { return }
+            vault.bannerTitle = "You’re offline"
+            vault.bannerText = PageLoadError.offline.faultBlurb
+        }
+        .onAppear {
+            _ = LinkPulse.singleton.linkSatisfied
+        }
         // sheet content is built lazily
         .sheet(item: Binding(get: { vault.policySheet }, set: { vault.policySheet = $0 })) { sheet in
             LegalWebSheet(sheetHeading: sheet.sheetHeading, policyURL: sheet.policyURL)
         }
         // alert, buttons below
         .alert(
-            AppMetadata.marketingTitle,
-            isPresented: Binding(get: { vault.bannerText != nil }, set: { if !$0 { vault.bannerText = nil } })
+            vault.bannerTitle ?? AppMetadata.marketingTitle,
+            isPresented: Binding(
+                get: { vault.bannerText != nil },
+                set: {
+                    if !$0 {
+                        vault.bannerTitle = nil
+                        vault.bannerText = nil
+                    }
+                })
         ) {
-            Button("OK", role: .cancel) { vault.bannerText = nil }
+            Button("OK", role: .cancel) {
+                vault.bannerTitle = nil
+                vault.bannerText = nil
+            }
         } message: {
             Text(vault.bannerText ?? "")
         }

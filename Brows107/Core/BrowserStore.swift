@@ -35,6 +35,7 @@ import UIKit
     var assistantBusy = false
     var attachedPhoto: UIImage?
     var bannerText: String?
+    var bannerTitle: String?
     var copyToastVisible = false
     var policySheet: LegalSheet?
     var chromeTheme = UserDefaults.standard.string(forKey: "b107ChromeTheme") ?? "System"
